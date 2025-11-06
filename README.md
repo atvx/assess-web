@@ -12,7 +12,8 @@
 
 ### UI 框架
 - **Ant Design Vue** (^4.2.6) - 企业级 UI 组件库
-- **TailwindCSS** (^4.1.16) - 实用优先的 CSS 框架
+- **TailwindCSS** (^4.1.0) - 实用优先的 CSS 框架
+- **@tailwindcss/vite** (^4.1.0) - Tailwind CSS Vite 插件
 
 ### 工具库
 - **Axios** (^1.13.2) - HTTP 客户端
@@ -25,6 +26,9 @@
 - **Prettier** (3.6.2) - 代码格式化
 
 ## 🚀 快速开始
+
+### 环境要求
+- **Node.js**: ^20.19.0 或 >=22.12.0
 
 ### 安装依赖
 ```sh
@@ -78,15 +82,21 @@ assess-web/
 │   ├── App.vue          # 根组件
 │   └── main.ts          # 应用入口
 ├── public/              # 公共静态资源
-├── tailwind.config.js   # TailwindCSS 配置
-├── postcss.config.js    # PostCSS 配置
-├── vite.config.ts       # Vite 配置
+├── vite.config.ts       # Vite 配置（含 Tailwind CSS 插件）
 ├── eslint.config.ts     # ESLint 配置
 ├── .prettierrc.json     # Prettier 配置
-└── tsconfig.json        # TypeScript 配置
+├── tsconfig.json        # TypeScript 配置
+└── vitest.config.ts     # Vitest 测试配置
 ```
 
 ## ⚙️ 配置说明
+
+### Vite 配置
+位于 `vite.config.ts`，包含以下插件：
+- `@vitejs/plugin-vue` - Vue 3 单文件组件支持
+- `@vitejs/plugin-vue-jsx` - JSX 支持
+- `vite-plugin-vue-devtools` - Vue DevTools 集成
+- `@tailwindcss/vite` - Tailwind CSS v4 集成
 
 ### Axios 配置
 项目已封装 Axios 实例，位于 `src/utils/request.ts`，包含：
@@ -102,26 +112,29 @@ VITE_API_BASE_URL=http://localhost:3000/api
 ```
 
 ### TailwindCSS
-已配置 TailwindCSS，可直接在组件中使用实用类：
-- 配置文件：`tailwind.config.js`
-- 样式入口：`src/assets/main.css`
-- PostCSS 配置：`postcss.config.js`
+已配置 TailwindCSS v4，采用全新架构：
+- **配置方式**：通过 `@tailwindcss/vite` 插件集成到 Vite
+- **样式入口**：`src/assets/main.css` 中使用 `@import "tailwindcss";`
+- **无需配置文件**：不再需要 `tailwind.config.js` 和 `postcss.config.js`
+- **更快的构建速度**：原生 Vite 插件集成
+- **向后兼容**：所有现有的 Tailwind 类名仍然有效
 
 ### Ant Design Vue
 已全局注册，可在任何组件中直接使用所有 Ant Design Vue 组件。
 
 ## 🎯 项目特性
 
-- ✅ Vue 3 Composition API
-- ✅ TypeScript 支持
-- ✅ Ant Design Vue 组件库
-- ✅ TailwindCSS 实用类样式
-- ✅ Pinia 状态管理
-- ✅ Vue Router 路由管理
-- ✅ Axios HTTP 请求封装
-- ✅ ESLint + Prettier 代码规范
-- ✅ Vitest 单元测试
-- ✅ Vite 插件：Vue DevTools
+- ✅ **Vue 3 Composition API** - 现代化的组件开发方式
+- ✅ **TypeScript** - 完整的类型支持和类型检查
+- ✅ **Ant Design Vue** - 企业级 UI 组件库
+- ✅ **TailwindCSS v4** - 最新版本，通过 Vite 插件集成
+- ✅ **Pinia** - 轻量级状态管理
+- ✅ **Vue Router** - 路由管理和导航守卫
+- ✅ **Axios** - HTTP 请求封装和拦截器
+- ✅ **ESLint + Prettier** - 代码质量和格式化
+- ✅ **Vitest** - 快速的单元测试框架
+- ✅ **Vue DevTools** - 开发调试工具集成
+- ✅ **Node.js 20+/22+** - 支持最新的 Node.js 版本
 
 ## 📚 示例页面
 

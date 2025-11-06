@@ -56,9 +56,8 @@ assess-web/
 │   └── main.ts               # 应用入口
 │
 ├── public/                   # 公共静态资源
-├── tailwind.config.js        # TailwindCSS配置
-├── postcss.config.js         # PostCSS配置
-├── vite.config.ts            # Vite配置
+├── vite.config.ts            # Vite配置（含Tailwind CSS插件）
+├── vitest.config.ts          # Vitest测试配置
 ├── eslint.config.ts          # ESLint配置
 ├── .prettierrc.json          # Prettier配置
 ├── tsconfig.json             # TypeScript配置
@@ -158,10 +157,11 @@ assess-web/
 
 ## 🎨 样式规范
 
-- 使用 TailwindCSS 实用类进行样式开发
+- 使用 TailwindCSS v4 实用类进行样式开发
 - 使用 Ant Design Vue 组件库
 - 组件内部样式使用 `<style scoped>`
 - 全局样式放在 `src/assets/main.css`
+- Tailwind CSS 通过 Vite 插件集成，无需额外配置文件
 
 ## 🔧 后续扩展
 

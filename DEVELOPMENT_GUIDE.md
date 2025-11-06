@@ -9,6 +9,10 @@
 
 ## 🚀 快速开始
 
+### 环境要求
+- **Node.js**: ^20.19.0 或 >=22.12.0
+- **包管理器**: npm
+
 ### 1. 安装依赖
 ```bash
 npm install
@@ -141,6 +145,8 @@ const result = await request.post('/api/endpoint', { data })
 </template>
 ```
 
+**注意**：项目使用 TailwindCSS v4，通过 `@tailwindcss/vite` 插件集成，无需额外配置文件。
+
 ## 📝 代码规范
 
 ### 运行 ESLint
@@ -187,7 +193,11 @@ VITE_API_BASE_URL=http://localhost:3000/api
 ```
 
 ### Vite 配置
-编辑 `vite.config.ts`
+编辑 `vite.config.ts`，当前包含的插件：
+- `@vitejs/plugin-vue` - Vue 3 SFC 支持
+- `@vitejs/plugin-vue-jsx` - JSX 支持
+- `vite-plugin-vue-devtools` - DevTools 集成
+- `@tailwindcss/vite` - Tailwind CSS v4 集成
 
 ### 路由配置
 - `src/router/front.ts` - 前台路由
@@ -196,13 +206,14 @@ VITE_API_BASE_URL=http://localhost:3000/api
 
 ## 📚 技术栈
 
-- Vue 3 + TypeScript
-- Vite
-- Ant Design Vue
-- TailwindCSS
-- Pinia
-- Vue Router
-- Axios
+- **Vue 3** (^3.5.22) + **TypeScript** (~5.9.0)
+- **Vite** (^7.1.11)
+- **Ant Design Vue** (^4.2.6)
+- **TailwindCSS** v4 (^4.1.0) + **@tailwindcss/vite** (^4.1.0)
+- **Pinia** (^3.0.3)
+- **Vue Router** (^4.6.3)
+- **Axios** (^1.13.2)
+- **Vitest** (^3.2.4) + **ESLint** (^9.37.0) + **Prettier** (3.6.2)
 
 详细说明请查看 [README.md](./README.md)
 
@@ -215,11 +226,10 @@ localStorage.getItem('token')
 ```
 
 ### 2. 样式不生效
-确保已导入 TailwindCSS：
-```typescript
-// main.ts
-import './assets/main.css'
-```
+确保已正确配置：
+- 检查 `vite.config.ts` 中是否包含 `tailwindcss()` 插件
+- 确保在 `main.ts` 中导入了 `./assets/main.css`
+- 检查 `src/assets/main.css` 中是否有 `@import "tailwindcss";`
 
 ### 3. 路由跳转失败
 检查路由配置和路由守卫逻辑
