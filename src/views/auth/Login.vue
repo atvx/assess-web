@@ -51,15 +51,6 @@
       <div class="text-center mt-6">
         <router-link to="/" class="text-gray-500 hover:text-blue-600"> 返回首页 </router-link>
       </div>
-
-      <!-- 演示提示 -->
-      <a-alert
-        message="演示账号"
-        description="用户名: admin / 密码: 任意密码"
-        type="info"
-        show-icon
-        class="mt-4"
-      />
     </div>
   </div>
 </template>
@@ -67,7 +58,6 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { message } from 'ant-design-vue'
 import { UserOutlined, LockOutlined } from '@ant-design/icons-vue'
 import { useUserStore } from '@/stores/user'
 
@@ -87,41 +77,24 @@ const rules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 }
 
-// 登录处理（演示版本，实际应该调用后端接口）
+// 登录处理
 const handleLogin = async () => {
   loading.value = true
 
   try {
-    // 模拟登录请求延迟
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    // 调用登录接口
+    const result = await userStore.login({
+      username: formState.username,
+      password: formState.password,
+    })
 
-    // 演示：直接通过，实际应该调用 API
-    if (formState.username) {
-      // 生成模拟 token
-      const mockToken = 'mock_token_' + Date.now()
-
-      // 模拟用户信息
-      const mockUser = {
-        id: 1,
-        username: formState.username,
-        email: `${formState.username}@example.com`,
-        role: 'admin',
-      }
-
-      // 保存登录状态
-      userStore.login(mockToken, mockUser)
-
-      message.success('登录成功')
-
-      // 跳转到目标页面或后台首页
+    if (result.success) {
+      // 登录成功，跳转到目标页面或后台首页
       const redirect = (route.query.redirect as string) || '/admin/dashboard'
-      router.push(redirect)
-    } else {
-      message.error('登录失败')
+      await router.push(redirect)
     }
   } catch (error) {
     console.error('Login error:', error)
-    message.error('登录失败，请稍后重试')
   } finally {
     loading.value = false
   }

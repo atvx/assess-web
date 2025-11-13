@@ -65,7 +65,7 @@
                     <UserOutlined />
                   </template>
                 </a-avatar>
-                <span class="ml-2">{{ userStore.username || '管理员' }}</span>
+                <span class="ml-2">{{ userStore.realName || userStore.username || '管理员' }}</span>
               </div>
               <template #overlay>
                 <a-menu>
@@ -137,8 +137,8 @@ const handleMenuClick = ({ key }: { key: string }) => {
 }
 
 // 退出登录
-const handleLogout = () => {
-  userStore.logout()
+const handleLogout = async () => {
+  await userStore.logout()
   router.push('/login')
 }
 </script>

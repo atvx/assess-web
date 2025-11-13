@@ -1,5 +1,7 @@
 import axios from 'axios'
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
+import { message } from 'ant-design-vue'
+import router from '@/router'
 
 // 创建 axios 实例
 const service: AxiosInstance = axios.create({
@@ -13,10 +15,10 @@ const service: AxiosInstance = axios.create({
 // 请求拦截器
 service.interceptors.request.use(
   (config) => {
-    // 在发送请求之前做些什么，例如添加 token
     const token = localStorage.getItem('token')
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+      // token 已经包含了 tokenType (如 "Bearer token")，直接使用
+      config.headers.Authorization = token
     }
     return config
   },
@@ -33,12 +35,20 @@ service.interceptors.response.use(
     // 对响应数据做些什么
     const res = response.data
 
-    // 这里可以根据后端返回的状态码做统一处理
-    // 例如：
-    // if (res.code !== 200) {
-    //   // 处理错误
-    //   return Promise.reject(new Error(res.message || 'Error'))
-    // }
+    // 根据后端返回的状态码做统一处理
+    if (res.code !== undefined && res.code !== 200) {
+      // 根据不同的 code 进行不同的处理
+      // 例如：code 401 表示未授权
+      if (res.code === 401) {
+        message.error('登录已过期，请重新登录')
+        // 清除本地存储
+        localStorage.removeItem('token')
+        localStorage.removeItem('userInfo')
+        // 跳转到登录页
+        router.push('/login')
+        return Promise.reject(new Error(res.message || '未授权'))
+      }
+    }
 
     return res
   },
@@ -46,27 +56,51 @@ service.interceptors.response.use(
     // 对响应错误做些什么
     console.error('Response error:', error)
 
+    let errorMessage = '请求失败，请稍后重试'
+
     // 处理不同的 HTTP 状态码
     if (error.response) {
       switch (error.response.status) {
         case 401:
-          // 未授权，可以跳转到登录页
-          console.error('未授权，请重新登录')
+          // 未授权，清除登录状态并跳转到登录页
+          errorMessage = '登录已过期，请重新登录'
+          message.error(errorMessage)
+          // 清除本地存储
+          localStorage.removeItem('token')
+          localStorage.removeItem('userInfo')
+          // 跳转到登录页
+          router.push('/login')
           break
         case 403:
-          console.error('拒绝访问')
+          errorMessage = '没有权限访问该资源'
+          message.error(errorMessage)
           break
         case 404:
-          console.error('请求的资源不存在')
+          errorMessage = '请求的资源不存在'
+          message.error(errorMessage)
           break
         case 500:
-          console.error('服务器错误')
+          errorMessage = '服务器错误，请稍后重试'
+          message.error(errorMessage)
+          break
+        case 502:
+        case 503:
+        case 504:
+          errorMessage = '服务暂时不可用，请稍后重试'
+          message.error(errorMessage)
           break
         default:
-          console.error(`连接错误: ${error.response.status}`)
+          errorMessage = error.response.data?.message || `连接错误: ${error.response.status}`
+          message.error(errorMessage)
       }
+    } else if (error.request) {
+      // 请求已发出，但没有收到响应
+      errorMessage = '网络连接异常，请检查网络设置'
+      message.error(errorMessage)
     } else {
-      console.error('网络连接异常，请稍后再试')
+      // 在设置请求时发生了错误
+      errorMessage = error.message || '请求配置错误'
+      message.error(errorMessage)
     }
 
     return Promise.reject(error)
