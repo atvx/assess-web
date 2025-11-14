@@ -1,11 +1,11 @@
 <template>
   <div class="dashboard-page">
     <!-- 欢迎信息 -->
-    <div class="mb-8 p-6 rounded-lg card-shadow-sm theme-transition" style="background: var(--bg-primary)">
-      <h2 class="text-3xl font-bold mb-2 theme-transition" style="color: var(--text-primary)">
+    <div class="mb-8 p-6 rounded-lg bg-white dark:bg-gray-900 shadow-sm">
+      <h2 class="text-3xl font-bold mb-2 text-gray-900 dark:text-white">
         欢迎回来，{{ userStore.username }}！
       </h2>
-      <p class="text-base theme-transition" style="color: var(--text-secondary)">
+      <p class="text-base text-gray-600 dark:text-gray-400">
         这是您的工作台概览
       </p>
     </div>
@@ -13,12 +13,12 @@
     <!-- 数据统计卡片 -->
     <a-row :gutter="[24, 24]" class="mb-8">
       <a-col :xs="24" :sm="12" :md="6">
-        <div class="p-6 rounded-lg card-shadow-sm theme-transition" style="background: var(--bg-primary)">
+        <div class="p-6 rounded-lg bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow">
           <a-statistic title="总评审数" :value="156" suffix="个" />
         </div>
       </a-col>
       <a-col :xs="24" :sm="12" :md="6">
-        <div class="p-6 rounded-lg card-shadow-sm theme-transition" style="background: var(--bg-primary)">
+        <div class="p-6 rounded-lg bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow">
           <a-statistic title="进行中" :value="23" suffix="个">
             <template #prefix>
               <SyncOutlined :spin="true" />
@@ -27,12 +27,12 @@
         </div>
       </a-col>
       <a-col :xs="24" :sm="12" :md="6">
-        <div class="p-6 rounded-lg card-shadow-sm theme-transition" style="background: var(--bg-primary)">
+        <div class="p-6 rounded-lg bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow">
           <a-statistic title="已完成" :value="120" suffix="个" />
         </div>
       </a-col>
       <a-col :xs="24" :sm="12" :md="6">
-        <div class="p-6 rounded-lg card-shadow-sm theme-transition" style="background: var(--bg-primary)">
+        <div class="p-6 rounded-lg bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow">
           <a-statistic title="待处理" :value="13" suffix="个" />
         </div>
       </a-col>
@@ -41,25 +41,23 @@
     <!-- 快捷操作 -->
     <a-row :gutter="[24, 24]">
       <a-col :xs="24" :md="16">
-        <a-card :bordered="false" class="card-shadow rounded-lg theme-transition">
+        <a-card :bordered="false" class="rounded-lg shadow">
           <template #title>
-            <h3 class="text-xl font-bold theme-transition" style="color: var(--text-primary)">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white">
               最近评审
             </h3>
           </template>
           <a-list :data-source="recentReviews" item-layout="horizontal">
             <template #renderItem="{ item }">
-              <a-list-item class="px-4 py-3">
+              <a-list-item class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <a-list-item-meta>
                   <template #title>
-                    <span class="font-medium" style="color: var(--text-primary)">
+                    <span class="font-medium">
                       {{ item.title }}
                     </span>
                   </template>
                   <template #description>
-                    <span style="color: var(--text-secondary)">
-                      {{ item.description }}
-                    </span>
+                    {{ item.description }}
                   </template>
                 </a-list-item-meta>
                 <template #actions>
@@ -72,9 +70,9 @@
       </a-col>
 
       <a-col :xs="24" :md="8">
-        <a-card :bordered="false" class="card-shadow rounded-lg theme-transition">
+        <a-card :bordered="false" class="rounded-lg shadow">
           <template #title>
-            <h3 class="text-xl font-bold theme-transition" style="color: var(--text-primary)">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white">
               快捷操作
             </h3>
           </template>

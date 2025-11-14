@@ -4,7 +4,7 @@
       <!-- 侧边栏 -->
       <a-layout-sider v-model:collapsed="collapsed" collapsible theme="dark">
         <div class="logo p-4 text-center text-white font-bold text-lg">
-          {{ collapsed ? '智审云' : '智审云后台管理系统' }}
+          {{ collapsed ? '智审云' : '智审云' }}
         </div>
         <a-menu
           v-model:selectedKeys="selectedKeys"
@@ -48,8 +48,8 @@
 
       <a-layout>
         <!-- 顶部栏 -->
-        <a-layout-header class="px-6 flex items-center justify-between theme-transition" style="background: var(--bg-primary); border-bottom: 1px solid var(--border-color)">
-          <div style="color: var(--text-secondary)">
+        <a-layout-header class="!px-6 flex items-center justify-between !bg-white dark:!bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+          <div class="text-gray-600 dark:text-gray-400">
             <a-breadcrumb>
               <a-breadcrumb-item>后台管理</a-breadcrumb-item>
               <a-breadcrumb-item>{{ currentPageTitle }}</a-breadcrumb-item>
@@ -62,7 +62,7 @@
             
             <!-- 用户信息 -->
             <a-dropdown>
-              <div class="flex items-center cursor-pointer hover:text-blue-600">
+              <div class="flex items-center cursor-pointer text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                 <a-avatar :style="{ backgroundColor: '#1890ff' }">
                   <template #icon>
                     <UserOutlined />
@@ -88,13 +88,13 @@
         </a-layout-header>
 
         <!-- 内容区 -->
-        <a-layout-content class="m-6 p-6 rounded-lg overflow-auto card-shadow theme-transition" style="background: var(--bg-primary)">
+        <a-layout-content class="m-6 p-6 rounded-lg overflow-auto !bg-white dark:!bg-gray-900 shadow">
           <router-view />
         </a-layout-content>
 
         <!-- 底部 -->
-        <a-layout-footer class="text-center theme-transition" style="color: var(--text-tertiary)">
-          智审云后台管理系统 &copy; 2025
+        <a-layout-footer class="text-center text-gray-500 dark:text-gray-400">
+          智审云 &copy; 2025
         </a-layout-footer>
       </a-layout>
     </a-layout>
@@ -148,17 +148,25 @@ const handleLogout = async () => {
 </script>
 
 <style scoped>
+/* 使用 Tailwind 类，最小化自定义样式 */
 .logo {
   transition: all 0.3s;
+}
+
+:deep(.ant-layout) {
+  background: transparent;
 }
 
 :deep(.ant-layout-header) {
   line-height: 64px;
   height: 64px;
-  padding: 0 24px;
 }
 
 :deep(.ant-layout-content) {
   min-height: 280px;
+}
+
+:deep(.ant-layout-footer) {
+  background: transparent;
 }
 </style>

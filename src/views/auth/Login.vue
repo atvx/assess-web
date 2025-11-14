@@ -1,15 +1,12 @@
 <template>
-  <div
-    class="login-page min-h-screen flex items-center justify-center px-4 theme-transition"
-    style="background: var(--bg-secondary)"
-  >
-    <div class="login-container rounded-lg p-10 w-full max-w-md card-shadow theme-transition" style="background: var(--bg-primary)">
+  <div class="login-page min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-gray-950">
+    <div class="login-container rounded-lg p-10 w-full max-w-md bg-white dark:bg-gray-900 shadow-lg">
       <!-- Logo -->
       <div class="text-center mb-10">
-        <h1 class="text-4xl font-bold mb-2 theme-transition" style="color: var(--text-primary)">
+        <h1 class="text-4xl font-bold mb-2 text-gray-900 dark:text-white">
           智审云
         </h1>
-        <p class="text-base theme-transition" style="color: var(--text-secondary)">
+        <p class="text-base text-gray-600 dark:text-gray-400">
           后台管理系统登录
         </p>
       </div>
@@ -35,7 +32,7 @@
         <a-form-item>
           <div class="flex items-center justify-between">
             <a-checkbox v-model:checked="formState.remember">记住我</a-checkbox>
-            <a href="#" class="text-blue-600 hover:text-blue-700">忘记密码?</a>
+            <a href="#" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">忘记密码?</a>
           </div>
         </a-form-item>
 
@@ -56,8 +53,7 @@
       <div class="text-center mt-8">
         <router-link
           to="/"
-          class="theme-transition hover:opacity-70 inline-flex items-center gap-2"
-          style="color: var(--text-secondary)"
+          class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors inline-flex items-center gap-2"
         >
           <span>←</span>
           <span>返回首页</span>

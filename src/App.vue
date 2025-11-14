@@ -7,7 +7,7 @@ const themeStore = useThemeStore()
 
 <template>
   <ConfigProvider :theme="themeStore.antdThemeConfig">
-    <router-view />
+  <router-view />
   </ConfigProvider>
 </template>
 

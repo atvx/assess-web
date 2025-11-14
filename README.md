@@ -166,6 +166,8 @@ VITE_API_BASE_URL=http://localhost:3000/api
 
 - [开发指南](./DEVELOPMENT_GUIDE.md) - 开发流程和最佳实践
 - [项目结构](./PROJECT_STRUCTURE.md) - 目录结构说明
+- [主题系统](./THEME.md) - 主题设计文档
+- [用户管理](./USER_MANAGEMENT.md) - 用户管理功能说明
 
 ## 📚 技术文档
 
