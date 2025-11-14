@@ -1,59 +1,67 @@
 <template>
   <div class="dashboard-page">
     <!-- 欢迎信息 -->
-    <a-card class="mb-6">
-      <h2 class="text-2xl font-bold mb-2">欢迎回来，{{ userStore.username }}！</h2>
-      <p class="text-gray-500">这是您的工作台概览</p>
-    </a-card>
+    <div class="mb-8 p-6 rounded-lg card-shadow-sm theme-transition" style="background: var(--bg-primary)">
+      <h2 class="text-3xl font-bold mb-2 theme-transition" style="color: var(--text-primary)">
+        欢迎回来，{{ userStore.username }}！
+      </h2>
+      <p class="text-base theme-transition" style="color: var(--text-secondary)">
+        这是您的工作台概览
+      </p>
+    </div>
 
     <!-- 数据统计卡片 -->
-    <a-row :gutter="[16, 16]" class="mb-6">
+    <a-row :gutter="[24, 24]" class="mb-8">
       <a-col :xs="24" :sm="12" :md="6">
-        <a-card>
-          <a-statistic title="总评审数" :value="156" :value-style="{ color: '#3f8600' }">
-            <template #prefix>
-              <FileTextOutlined />
-            </template>
-          </a-statistic>
-        </a-card>
+        <div class="p-6 rounded-lg card-shadow-sm theme-transition" style="background: var(--bg-primary)">
+          <a-statistic title="总评审数" :value="156" suffix="个" />
+        </div>
       </a-col>
       <a-col :xs="24" :sm="12" :md="6">
-        <a-card>
-          <a-statistic title="进行中" :value="23" :value-style="{ color: '#1890ff' }">
+        <div class="p-6 rounded-lg card-shadow-sm theme-transition" style="background: var(--bg-primary)">
+          <a-statistic title="进行中" :value="23" suffix="个">
             <template #prefix>
               <SyncOutlined :spin="true" />
             </template>
           </a-statistic>
-        </a-card>
+        </div>
       </a-col>
       <a-col :xs="24" :sm="12" :md="6">
-        <a-card>
-          <a-statistic title="已完成" :value="120" :value-style="{ color: '#52c41a' }">
-            <template #prefix>
-              <CheckCircleOutlined />
-            </template>
-          </a-statistic>
-        </a-card>
+        <div class="p-6 rounded-lg card-shadow-sm theme-transition" style="background: var(--bg-primary)">
+          <a-statistic title="已完成" :value="120" suffix="个" />
+        </div>
       </a-col>
       <a-col :xs="24" :sm="12" :md="6">
-        <a-card>
-          <a-statistic title="待处理" :value="13" :value-style="{ color: '#faad14' }">
-            <template #prefix>
-              <ClockCircleOutlined />
-            </template>
-          </a-statistic>
-        </a-card>
+        <div class="p-6 rounded-lg card-shadow-sm theme-transition" style="background: var(--bg-primary)">
+          <a-statistic title="待处理" :value="13" suffix="个" />
+        </div>
       </a-col>
     </a-row>
 
     <!-- 快捷操作 -->
-    <a-row :gutter="[16, 16]" class="mb-6">
+    <a-row :gutter="[24, 24]">
       <a-col :xs="24" :md="16">
-        <a-card title="最近评审" :bordered="false">
+        <a-card :bordered="false" class="card-shadow rounded-lg theme-transition">
+          <template #title>
+            <h3 class="text-xl font-bold theme-transition" style="color: var(--text-primary)">
+              最近评审
+            </h3>
+          </template>
           <a-list :data-source="recentReviews" item-layout="horizontal">
             <template #renderItem="{ item }">
-              <a-list-item>
-                <a-list-item-meta :title="item.title" :description="item.description" />
+              <a-list-item class="px-4 py-3">
+                <a-list-item-meta>
+                  <template #title>
+                    <span class="font-medium" style="color: var(--text-primary)">
+                      {{ item.title }}
+                    </span>
+                  </template>
+                  <template #description>
+                    <span style="color: var(--text-secondary)">
+                      {{ item.description }}
+                    </span>
+                  </template>
+                </a-list-item-meta>
                 <template #actions>
                   <a-tag :color="item.statusColor">{{ item.status }}</a-tag>
                 </template>
@@ -64,8 +72,13 @@
       </a-col>
 
       <a-col :xs="24" :md="8">
-        <a-card title="快捷操作" :bordered="false">
-          <a-space direction="vertical" :style="{ width: '100%' }">
+        <a-card :bordered="false" class="card-shadow rounded-lg theme-transition">
+          <template #title>
+            <h3 class="text-xl font-bold theme-transition" style="color: var(--text-primary)">
+              快捷操作
+            </h3>
+          </template>
+          <a-space direction="vertical" :style="{ width: '100%' }" :size="16">
             <router-link to="/admin/review/create">
               <a-button type="primary" block size="large">
                 <template #icon>

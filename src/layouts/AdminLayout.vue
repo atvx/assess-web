@@ -48,8 +48,8 @@
 
       <a-layout>
         <!-- 顶部栏 -->
-        <a-layout-header class="bg-white px-6 flex items-center justify-between shadow-sm">
-          <div class="text-gray-600">
+        <a-layout-header class="px-6 flex items-center justify-between theme-transition" style="background: var(--bg-primary); border-bottom: 1px solid var(--border-color)">
+          <div style="color: var(--text-secondary)">
             <a-breadcrumb>
               <a-breadcrumb-item>后台管理</a-breadcrumb-item>
               <a-breadcrumb-item>{{ currentPageTitle }}</a-breadcrumb-item>
@@ -57,6 +57,9 @@
           </div>
 
           <div class="flex items-center space-x-4">
+            <!-- 主题切换 -->
+            <ThemeToggle />
+            
             <!-- 用户信息 -->
             <a-dropdown>
               <div class="flex items-center cursor-pointer hover:text-blue-600">
@@ -85,12 +88,12 @@
         </a-layout-header>
 
         <!-- 内容区 -->
-        <a-layout-content class="m-6 p-6 bg-white rounded-lg shadow-sm overflow-auto">
+        <a-layout-content class="m-6 p-6 rounded-lg overflow-auto card-shadow theme-transition" style="background: var(--bg-primary)">
           <router-view />
         </a-layout-content>
 
         <!-- 底部 -->
-        <a-layout-footer class="text-center text-gray-600">
+        <a-layout-footer class="text-center theme-transition" style="color: var(--text-tertiary)">
           智审云后台管理系统 &copy; 2025
         </a-layout-footer>
       </a-layout>
@@ -102,6 +105,7 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import {
   DashboardOutlined,
   FileTextOutlined,

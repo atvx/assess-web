@@ -128,6 +128,7 @@ VITE_API_BASE_URL=http://localhost:3000/api
 - ✅ **TypeScript** - 完整的类型支持和类型检查
 - ✅ **Ant Design Vue** - 企业级 UI 组件库
 - ✅ **TailwindCSS v4** - 最新版本，通过 Vite 插件集成
+- ✅ **主题切换** - 一键切换浅色/深色主题
 - ✅ **Pinia** - 轻量级状态管理
 - ✅ **Vue Router** - 路由管理和导航守卫
 - ✅ **Axios** - HTTP 请求封装和拦截器
@@ -161,7 +162,12 @@ VITE_API_BASE_URL=http://localhost:3000/api
 - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
 - [开启自定义对象格式化](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
 
-## 📖 技术文档
+## 📖 项目文档
+
+- [开发指南](./DEVELOPMENT_GUIDE.md) - 开发流程和最佳实践
+- [项目结构](./PROJECT_STRUCTURE.md) - 目录结构说明
+
+## 📚 技术文档
 
 - [Vue 3](https://cn.vuejs.org/)
 - [Vite](https://cn.vitejs.dev/)

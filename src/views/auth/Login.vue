@@ -1,12 +1,17 @@
 <template>
   <div
-    class="login-page min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
+    class="login-page min-h-screen flex items-center justify-center px-4 theme-transition"
+    style="background: var(--bg-secondary)"
   >
-    <div class="login-container bg-white rounded-lg shadow-2xl p-8 w-full max-w-md">
+    <div class="login-container rounded-lg p-10 w-full max-w-md card-shadow theme-transition" style="background: var(--bg-primary)">
       <!-- Logo -->
-      <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">智审云</h1>
-        <p class="text-gray-500">后台管理系统登录</p>
+      <div class="text-center mb-10">
+        <h1 class="text-4xl font-bold mb-2 theme-transition" style="color: var(--text-primary)">
+          智审云
+        </h1>
+        <p class="text-base theme-transition" style="color: var(--text-secondary)">
+          后台管理系统登录
+        </p>
       </div>
 
       <!-- 登录表单 -->
@@ -48,15 +53,22 @@
       </a-form>
 
       <!-- 返回首页 -->
-      <div class="text-center mt-6">
-        <router-link to="/" class="text-gray-500 hover:text-blue-600"> 返回首页 </router-link>
+      <div class="text-center mt-8">
+        <router-link
+          to="/"
+          class="theme-transition hover:opacity-70 inline-flex items-center gap-2"
+          style="color: var(--text-secondary)"
+        >
+          <span>←</span>
+          <span>返回首页</span>
+        </router-link>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { UserOutlined, LockOutlined } from '@ant-design/icons-vue'
 import { useUserStore } from '@/stores/user'
@@ -77,6 +89,54 @@ const rules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 }
 
+// 简单的编码/解码函数（Base64）
+const encode = (str: string): string => {
+  try {
+    return btoa(encodeURIComponent(str))
+  } catch {
+    return ''
+  }
+}
+
+const decode = (str: string): string => {
+  try {
+    return decodeURIComponent(atob(str))
+  } catch {
+    return ''
+  }
+}
+
+// 保存登录信息
+const saveLoginInfo = () => {
+  if (formState.remember) {
+    localStorage.setItem('remembered_username', formState.username)
+    localStorage.setItem('remembered_password', encode(formState.password))
+    localStorage.setItem('remember_me', 'true')
+  } else {
+    // 清除保存的信息
+    localStorage.removeItem('remembered_username')
+    localStorage.removeItem('remembered_password')
+    localStorage.removeItem('remember_me')
+  }
+}
+
+// 加载保存的登录信息
+const loadLoginInfo = () => {
+  const rememberMe = localStorage.getItem('remember_me') === 'true'
+  if (rememberMe) {
+    const username = localStorage.getItem('remembered_username')
+    const password = localStorage.getItem('remembered_password')
+    
+    if (username) {
+      formState.username = username
+    }
+    if (password) {
+      formState.password = decode(password)
+    }
+    formState.remember = true
+  }
+}
+
 // 登录处理
 const handleLogin = async () => {
   loading.value = true
@@ -89,6 +149,9 @@ const handleLogin = async () => {
     })
 
     if (result.success) {
+      // 保存或清除登录信息
+      saveLoginInfo()
+      
       // 登录成功，跳转到目标页面或后台首页
       const redirect = (route.query.redirect as string) || '/admin/dashboard'
       await router.push(redirect)
@@ -99,10 +162,11 @@ const handleLogin = async () => {
     loading.value = false
   }
 }
+
+// 页面加载时读取保存的登录信息
+onMounted(() => {
+  loadLoginInfo()
+})
 </script>
 
-<style scoped>
-.login-page {
-  background-image: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(99,102,241,0.05)" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grid)" /></svg>');
-}
-</style>
+<style scoped></style>
