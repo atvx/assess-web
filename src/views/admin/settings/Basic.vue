@@ -499,7 +499,7 @@
     >
       <a-form
         :model="announcementForm"
-        :label-col="{ span: 5 }" 
+        :label-col="{ span: 5 }"
         :wrapper-col="{ span: 19 }"
       >
         <a-form-item label="公告类型">
