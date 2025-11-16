@@ -1,3 +1,4 @@
+<!-- eslint-disable vue/multi-word-component-names -->
 <template>
   <div class="user-list-page">
     <!-- 搜索表单 -->
@@ -62,7 +63,7 @@
       <template #title>
         <div class="flex items-center justify-between">
           <span class="text-lg font-semibold text-gray-900 dark:text-white">用户列表</span>
-          <a-button type="primary">
+          <a-button type="primary" @click="handleAdd">
             <template #icon>
               <PlusOutlined />
             </template>
@@ -192,7 +193,7 @@
           v-model:current="pagination.current"
           v-model:page-size="pagination.size"
           :total="pagination.total"
-          :show-total="(total) => `共 ${total} 条记录`"
+          :show-total="(total: number) => `共 ${total} 条记录`"
           :page-size-options="['10', '20', '50', '100']"
           show-size-changer
           show-quick-jumper
@@ -200,11 +201,56 @@
         />
       </div>
     </a-card>
+
+    <!-- 查看用户详情弹窗 -->
+    <a-modal
+      v-model:open="detailModalVisible"
+      title="用户详情"
+      :width="680"
+      :footer="null"
+    >
+      <a-descriptions bordered :column="2" v-if="currentUser">
+        <a-descriptions-item label="用户名" :span="1">
+          {{ currentUser.username }}
+        </a-descriptions-item>
+        <a-descriptions-item label="真实姓名" :span="1">
+          {{ currentUser.realName || '-' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="邮箱" :span="2">
+          {{ currentUser.email || '-' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="手机号" :span="2">
+          {{ currentUser.phone || '-' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="组织" :span="1">
+          {{ currentUser.orgName || '-' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="部门" :span="1">
+          {{ currentUser.deptName || '-' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="状态" :span="1">
+          <a-tag :color="getStatusColor(currentUser.status)">
+            {{ getStatusText(currentUser.status) }}
+          </a-tag>
+        </a-descriptions-item>
+        <a-descriptions-item label="角色" :span="1">
+          <a-tag v-if="currentUser.isAdmin" color="blue">管理员</a-tag>
+          <span v-else class="text-gray-400">普通用户</span>
+        </a-descriptions-item>
+        <a-descriptions-item label="创建时间" :span="2">
+          {{ formatDate(currentUser.createdAt) }}
+        </a-descriptions-item>
+        <a-descriptions-item label="更新时间" :span="2">
+          {{ formatDate(currentUser.updatedAt) }}
+        </a-descriptions-item>
+      </a-descriptions>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import {
   SearchOutlined,
@@ -221,6 +267,8 @@ import {
 } from '@ant-design/icons-vue'
 import { userApi, type User, type UserQueryDTO } from '@/api/user'
 import dayjs from 'dayjs'
+
+const router = useRouter()
 
 // 查询参数（表单使用）
 const queryParams = reactive({
@@ -241,6 +289,10 @@ const pagination = reactive({
 // 用户列表
 const userList = ref<User[]>([])
 const loading = ref(false)
+
+// 详情弹窗相关
+const detailModalVisible = ref(false)
+const currentUser = ref<User | null>(null)
 
 // 表格列定义
 const columns = [
@@ -290,12 +342,12 @@ const fetchUserList = async () => {
     // 转换查询参数类型
     const params: UserQueryDTO = {
       keyword: queryParams.keyword,
-      status: queryParams.status as any,
+      status: (queryParams.status as 'enabled' | 'disabled' | 'locked') || undefined,
       isAdmin: queryParams.isAdmin === 'true' ? true : queryParams.isAdmin === 'false' ? false : undefined,
       current: pagination.current,
       size: pagination.size,
     }
-    
+
     const response = await userApi.getUserList(params)
 
     if (response.code === 200) {
@@ -334,16 +386,30 @@ const handlePageChange = (page: number, pageSize: number) => {
   fetchUserList()
 }
 
+// 新增用户
+const handleAdd = () => {
+  router.push('/admin/system/user/create')
+}
+
 // 查看用户
-const handleView = (record: User) => {
-  message.info(`查看用户: ${record.username}`)
-  // TODO: 跳转到用户详情页或打开详情弹窗
+const handleView = async (record: User) => {
+  try {
+    const response = await userApi.getUserById(record.id)
+    if (response.code === 200) {
+      currentUser.value = response.data
+      detailModalVisible.value = true
+    } else {
+      message.error(response.message || '获取用户详情失败')
+    }
+  } catch (error) {
+    console.error('获取用户详情失败:', error)
+    message.error('获取用户详情失败')
+  }
 }
 
 // 编辑用户
 const handleEdit = (record: User) => {
-  message.info(`编辑用户: ${record.username}`)
-  // TODO: 打开编辑弹窗
+  router.push(`/admin/system/user/edit/${record.id}`)
 }
 
 // 重置密码

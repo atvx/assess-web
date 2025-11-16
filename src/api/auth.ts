@@ -57,3 +57,20 @@ export function getCurrentUser() {
   return request.get<ApiResponse<LoginResponse>>('/auth/user')
 }
 
+/**
+ * 修改密码请求参数
+ */
+export interface ChangePasswordRequest {
+  userId: string       // 用户ID
+  oldPassword: string  // 旧密码
+  newPassword: string  // 新密码
+}
+
+/**
+ * 修改密码
+ * @param data 修改密码信息
+ * @returns Promise<ApiResponse>
+ */
+export function changePassword(data: ChangePasswordRequest) {
+  return request.post<ApiResponse<Record<string, never>>>('/auth/change-password', data)
+}

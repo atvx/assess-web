@@ -47,10 +47,26 @@ export interface PageResult<T> {
 /**
  * API 响应
  */
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   code: number
   message: string
   data: T
+}
+
+/**
+ * 用户创建/更新 DTO
+ */
+export interface UserFormDTO {
+  id?: string
+  username: string
+  realName?: string
+  email?: string
+  phone?: string
+  password?: string
+  orgId?: string
+  deptId?: string
+  status?: 'enabled' | 'disabled' | 'locked'
+  isAdmin?: boolean
 }
 
 /**
@@ -74,15 +90,15 @@ export const userApi = {
   /**
    * 创建用户
    */
-  createUser(data: Partial<User>): Promise<ApiResponse<User>> {
+  createUser(data: UserFormDTO): Promise<ApiResponse<User>> {
     return request.post('/users', data)
   },
 
   /**
    * 更新用户
    */
-  updateUser(id: string, data: Partial<User>): Promise<ApiResponse<User>> {
-    return request.put(`/users/${id}`, data)
+  updateUser(data: UserFormDTO): Promise<ApiResponse<User>> {
+    return request.put('/users', data)
   },
 
   /**
