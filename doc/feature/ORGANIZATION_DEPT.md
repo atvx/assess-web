@@ -65,11 +65,6 @@ interface Organization {
   // 状态
   status: 'enabled' | 'disabled'
   
-  // 统计信息
-  userCount?: number         // 用户数量
-  deptCount?: number         // 部门数量
-  activityCount?: number     // 活动数量
-  
   // 审计字段
   createdBy?: string
   updatedBy?: string
@@ -148,7 +143,6 @@ interface Organization {
 - 联系方式：邮箱、电话
 - 地区信息：省市区、详细地址
 - 扩展信息：规模、行业、描述
-- 统计数据：用户数、部门数、活动数
 - 审计信息：创建时间、更新时间
 
 #### 新增/编辑表单
@@ -325,10 +319,6 @@ CREATE TABLE organizations (
     
     status VARCHAR(20) NOT NULL DEFAULT 'enabled',
     
-    user_count INTEGER DEFAULT 0,
-    dept_count INTEGER DEFAULT 0,
-    activity_count INTEGER DEFAULT 0,
-    
     created_by VARCHAR(32),
     updated_by VARCHAR(32),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -480,10 +470,6 @@ const formData = reactive({
 4. **部门删除**
    - 删除部门前需检查子部门
    - 删除部门前需检查关联用户
-
-5. **统计字段**
-   - 定期更新统计数据
-   - 避免实时计算影响性能
 
 ---
 

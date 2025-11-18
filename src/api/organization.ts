@@ -21,9 +21,6 @@ export interface Organization {
   industry?: string // 所属行业（使用字典：org_industry）
   description?: string // 描述
   status: 'enabled' | 'disabled' // 状态
-  userCount?: number // 用户数量
-  deptCount?: number // 部门数量
-  activityCount?: number // 活动数量
   createdAt: string
   updatedAt: string
 }
@@ -73,42 +70,42 @@ export const organizationApi = {
   getOrganizationList(
     params: OrganizationQueryDTO,
   ): Promise<ApiResponse<PageResult<Organization>>> {
-    return request.get('/organizations', { params })
+    return request.get('/orgs', { params })
   },
 
   /**
    * 获取所有组织（用于下拉选择）
    */
   getAllOrganizations(): Promise<ApiResponse<Organization[]>> {
-    return request.get('/organizations/all')
+    return request.get('/orgs/all')
   },
 
   /**
    * 获取组织详情
    */
   getOrganizationById(id: string): Promise<ApiResponse<Organization>> {
-    return request.get(`/organizations/${id}`)
+    return request.get(`/orgs/${id}`)
   },
 
   /**
    * 创建组织
    */
   createOrganization(data: OrganizationFormDTO): Promise<ApiResponse<Organization>> {
-    return request.post('/organizations', data)
+    return request.post('/orgs', data)
   },
 
   /**
    * 更新组织
    */
   updateOrganization(data: OrganizationFormDTO): Promise<ApiResponse<Organization>> {
-    return request.put('/organizations', data)
+    return request.put('/orgs', data)
   },
 
   /**
    * 删除组织
    */
   deleteOrganization(id: string): Promise<ApiResponse<void>> {
-    return request.delete(`/organizations/${id}`)
+    return request.delete(`/orgs/${id}`)
   },
 
   /**
@@ -118,28 +115,21 @@ export const organizationApi = {
     id: string,
     status: 'enabled' | 'disabled',
   ): Promise<ApiResponse<void>> {
-    return request.put(`/organizations/${id}/status`, { status })
-  },
-
-  /**
-   * 获取组织统计信息
-   */
-  getOrganizationStats(id: string): Promise<ApiResponse<any>> {
-    return request.get(`/organizations/${id}/stats`)
+    return request.patch(`/orgs/${id}/status`, { status })
   },
 
   /**
    * 获取组织下的部门列表
    */
   getOrganizationDepartments(id: string): Promise<ApiResponse<any[]>> {
-    return request.get(`/organizations/${id}/departments`)
+    return request.get(`/orgs/${id}/departments`)
   },
 
   /**
    * 获取组织下的用户列表
    */
   getOrganizationUsers(id: string, params?: any): Promise<ApiResponse<PageResult<any>>> {
-    return request.get(`/organizations/${id}/users`, { params })
+    return request.get(`/orgs/${id}/users`, { params })
   },
 }
 

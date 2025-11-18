@@ -266,9 +266,6 @@ interface Organization {
   industryText?: string
   description?: string
   status: 'enabled' | 'disabled'
-  userCount?: number
-  deptCount?: number
-  activityCount?: number
   createdAt: string
   updatedAt: string
 }
@@ -318,9 +315,32 @@ interface Organization {
 
 **响应**: 创建的组织信息
 
-### 更新/删除组织
+### 更新组织
 
-同用户管理接口模式
+**接口**: `PUT /organizations`
+
+**请求**: 同创建组织
+
+**响应**: 更新后的组织信息
+
+### 删除组织
+
+**接口**: `DELETE /organizations/:id`
+
+**响应**: 成功消息
+
+### 启用/禁用组织
+
+**接口**: `PATCH /organizations/:id/status`
+
+**请求**:
+```typescript
+{
+  status: 'enabled' | 'disabled'
+}
+```
+
+**响应**: 成功消息
 
 ---
 
