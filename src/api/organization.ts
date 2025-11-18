@@ -74,13 +74,6 @@ export const organizationApi = {
   },
 
   /**
-   * 获取所有组织（用于下拉选择）
-   */
-  getAllOrganizations(): Promise<ApiResponse<Organization[]>> {
-    return request.get('/orgs/all')
-  },
-
-  /**
    * 获取组织详情
    */
   getOrganizationById(id: string): Promise<ApiResponse<Organization>> {
@@ -130,6 +123,25 @@ export const organizationApi = {
    */
   getOrganizationUsers(id: string, params?: any): Promise<ApiResponse<PageResult<any>>> {
     return request.get(`/orgs/${id}/users`, { params })
+  },
+
+  /**
+   * 切换组织（仅管理员）
+   */
+  switchOrganization(orgId: string): Promise<
+    ApiResponse<{
+      token: string
+      tokenType: string
+      userId: string
+      username: string
+      realName: string
+      orgId: string
+      isAdmin: boolean
+      permissions: string[]
+      roles: string[]
+    }>
+  > {
+    return request.patch('/admin/switch-org', { orgId })
   },
 }
 

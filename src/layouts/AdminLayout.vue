@@ -135,6 +135,10 @@
                     <UserOutlined />
                     个人中心
                   </a-menu-item>
+                  <a-menu-item v-if="userStore.isAdmin" key="switch-org" @click="handleSwitchOrg">
+                    <ApartmentOutlined />
+                    切换组织
+                  </a-menu-item>
                   <a-menu-divider />
                   <a-menu-item key="logout" @click="handleLogout">
                     <LogoutOutlined />
@@ -157,6 +161,84 @@
         </a-layout-footer>
       </a-layout>
     </a-layout>
+
+    <!-- 切换组织模态框 -->
+    <a-modal
+      v-model:open="switchOrgVisible"
+      title="切换组织"
+      :footer="null"
+      @cancel="handleCancelSwitchOrg"
+    >
+      <a-space direction="vertical" style="width: 100%" :size="16">
+        <!-- 搜索区域 -->
+        <a-space style="width: 100%">
+          <a-input
+            v-model:value="orgSearchKeyword"
+            placeholder="搜索组织名称或编码"
+            allow-clear
+            style="width: 280px"
+            @pressEnter="handleSearchOrg"
+          >
+            <template #prefix>
+              <SearchOutlined />
+            </template>
+          </a-input>
+          <a-select
+            v-model:value="orgSearchStatus"
+            placeholder="状态"
+            allow-clear
+            style="width: 120px"
+            @change="handleSearchOrg"
+          >
+            <a-select-option value="enabled">启用</a-select-option>
+            <a-select-option value="disabled">停用</a-select-option>
+          </a-select>
+          <a-button type="primary" @click="handleSearchOrg">
+            <template #icon><SearchOutlined /></template>
+            查询
+          </a-button>
+        </a-space>
+
+        <!-- 组织列表表格 -->
+        <a-table
+          :columns="orgColumns"
+          :data-source="organizations"
+          :pagination="orgPagination"
+          :loading="orgListLoading"
+          row-key="id"
+          size="small"
+          :scroll="{ y: 360 }"
+          @change="handleOrgTableChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'name'">
+              <div>
+                <div>{{ record.name }}</div>
+                <a-tag v-if="record.id === userStore.userInfo?.orgId" color="blue" size="small" style="margin-top: 4px">当前组织</a-tag>
+              </div>
+            </template>
+            <template v-else-if="column.key === 'type'">
+              <a-tag color="blue">{{ record.typeName || record.type }}</a-tag>
+            </template>
+            <template v-else-if="column.key === 'status'">
+              <a-tag :color="record.status === 'enabled' ? 'success' : 'default'">
+                {{ record.status === 'enabled' ? '启用' : '停用' }}
+              </a-tag>
+            </template>
+            <template v-else-if="column.key === 'action'">
+              <a-button
+                type="link"
+                size="small"
+                :disabled="record.id === userStore.userInfo?.orgId || record.status === 'disabled'"
+                @click="handleConfirmSwitch(record)"
+              >
+                切换
+              </a-button>
+            </template>
+          </template>
+        </a-table>
+      </a-space>
+    </a-modal>
   </div>
 </template>
 
@@ -164,6 +246,9 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { organizationApi, type Organization } from '@/api/organization'
+import { message, Modal } from 'ant-design-vue'
+import type { TableColumnsType } from 'ant-design-vue'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import {
   DashboardOutlined,
@@ -176,6 +261,7 @@ import {
   CheckCircleOutlined,
   BarChartOutlined,
   BellOutlined,
+  SearchOutlined,
 } from '@ant-design/icons-vue'
 
 const router = useRouter()
@@ -269,6 +355,152 @@ const handleProfile = () => {
 const handleLogout = async () => {
   await userStore.logout()
   router.push('/login')
+}
+
+// 切换组织
+const switchOrgVisible = ref(false)
+const switchOrgLoading = ref(false)
+const orgListLoading = ref(false)
+const organizations = ref<Organization[]>([])
+const orgSearchKeyword = ref('')
+const orgSearchStatus = ref<'enabled' | 'disabled' | undefined>(undefined)
+
+// 组织分页配置
+const orgPagination = ref({
+  current: 1,
+  pageSize: 10,
+  total: 0,
+  showSizeChanger: false,
+  showQuickJumper: false,
+  showTotal: (total: number) => `共 ${total} 条`,
+  size: 'small',
+})
+
+// 组织表格列
+const orgColumns: TableColumnsType = [
+  { title: '组织名称', key: 'name', dataIndex: 'name' },
+  { title: '组织编码', key: 'code', dataIndex: 'code' },
+  { title: '组织类型', key: 'type' },
+  { title: '状态', key: 'status', align: 'center' },
+  { title: '操作', key: 'action', align: 'center' },
+]
+
+// 打开切换组织对话框
+const handleSwitchOrg = async () => {
+  switchOrgVisible.value = true
+  // 重置搜索条件和分页
+  orgSearchKeyword.value = ''
+  orgSearchStatus.value = undefined
+  orgPagination.value.current = 1
+  await loadOrganizations()
+}
+
+// 加载组织列表
+const loadOrganizations = async () => {
+  try {
+    orgListLoading.value = true
+    const res = await organizationApi.getOrganizationList({
+      keyword: orgSearchKeyword.value,
+      status: orgSearchStatus.value,
+      current: orgPagination.value.current,
+      size: orgPagination.value.pageSize,
+    })
+    if (res.code === 200) {
+      organizations.value = res.data.records
+      orgPagination.value.total = res.data.total
+    }
+  } catch (error) {
+    message.error('加载组织列表失败')
+    console.error('Load organizations error:', error)
+  } finally {
+    orgListLoading.value = false
+  }
+}
+
+// 搜索组织
+const handleSearchOrg = () => {
+  orgPagination.value.current = 1
+  loadOrganizations()
+}
+
+// 表格变化（分页、排序、筛选）
+const handleOrgTableChange = (pagination: any) => {
+  orgPagination.value.current = pagination.current
+  orgPagination.value.pageSize = pagination.pageSize
+  loadOrganizations()
+}
+
+// 确认切换组织
+const handleConfirmSwitch = (org: Organization) => {
+  Modal.confirm({
+    title: '切换组织',
+    content: `确定要切换到「${org.name}」吗？切换后页面将自动刷新。`,
+    okText: '确定',
+    cancelText: '取消',
+    onOk: async () => {
+      await performSwitch(org.id)
+    },
+  })
+}
+
+// 执行切换
+const performSwitch = async (orgId: string) => {
+  try {
+    switchOrgLoading.value = true
+    const res = await organizationApi.switchOrganization(orgId)
+
+    if (res.code === 200) {
+      const {
+        token,
+        tokenType,
+        userId,
+        username,
+        realName,
+        orgId: newOrgId,
+        isAdmin,
+        permissions,
+        roles,
+      } = res.data
+
+      // 构建用户信息
+      const user = {
+        id: userId,
+        username,
+        realName,
+        orgId: newOrgId,
+        isAdmin,
+        permissions: permissions || [],
+        roles: roles || [],
+      }
+
+      // 更新本地存储的 token 和用户信息
+      const fullToken = tokenType ? `${tokenType} ${token}` : token
+      userStore.setLoginState(fullToken, user)
+
+      message.success('切换组织成功')
+      switchOrgVisible.value = false
+
+      // 刷新页面
+      setTimeout(() => {
+        window.location.reload()
+      }, 500)
+    } else {
+      message.error(res.message || '切换失败')
+    }
+  } catch (error: any) {
+    console.error('Switch organization error:', error)
+    message.error(error.response?.data?.message || '切换组织失败')
+  } finally {
+    switchOrgLoading.value = false
+  }
+}
+
+// 取消切换
+const handleCancelSwitchOrg = () => {
+  switchOrgVisible.value = false
+  orgSearchKeyword.value = ''
+  orgSearchStatus.value = undefined
+  organizations.value = []
 }
 </script>
 

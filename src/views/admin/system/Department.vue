@@ -94,10 +94,6 @@
                 <template #icon><EditOutlined /></template>
                 编辑
               </a-button>
-              <a-button size="small" @click="handleSetPermissions">
-                <template #icon><SafetyOutlined /></template>
-                权限设置
-              </a-button>
               <a-popconfirm
                 title="确定要删除该部门吗？"
                 ok-text="确定"
@@ -423,60 +419,6 @@
       </a-form>
     </a-modal>
 
-    <!-- 权限设置模态框 -->
-    <a-modal
-      v-model:open="permissionVisible"
-      title="部门权限设置"
-      width="700"
-      @ok="handleSubmitPermissions"
-      @cancel="permissionVisible = false"
-    >
-      <a-tabs v-model:activeKey="permissionTab">
-        <a-tab-pane key="data" tab="数据权限">
-          <a-form layout="vertical">
-            <a-form-item label="数据范围">
-              <a-radio-group v-model:value="permissionForm.dataScope">
-                <a-space direction="vertical">
-                  <a-radio value="all">全部数据权限</a-radio>
-                  <a-radio value="custom">自定义数据权限</a-radio>
-                  <a-radio value="dept">本部门数据权限</a-radio>
-                  <a-radio value="dept_and_child">本部门及以下数据权限</a-radio>
-                  <a-radio value="self">仅本人数据权限</a-radio>
-                </a-space>
-              </a-radio-group>
-            </a-form-item>
-            <a-form-item v-if="permissionForm.dataScope === 'custom'" label="自定义权限部门">
-              <a-tree
-                v-model:checkedKeys="permissionForm.customDepts"
-                :tree-data="departmentTree"
-                :field-names="{ children: 'children', title: 'name', key: 'id' }"
-                checkable
-                default-expand-all
-              />
-            </a-form-item>
-          </a-form>
-        </a-tab-pane>
-        <a-tab-pane key="menu" tab="菜单权限">
-          <a-tree
-            v-model:checkedKeys="permissionForm.menus"
-            :tree-data="menuTree"
-            :field-names="{ children: 'children', title: 'title', key: 'id' }"
-            checkable
-            default-expand-all
-          />
-        </a-tab-pane>
-        <a-tab-pane key="api" tab="接口权限">
-          <a-checkbox-group v-model:value="permissionForm.apis" style="width: 100%">
-            <a-row>
-              <a-col v-for="api in apiList" :key="api.id" :span="12" style="margin-bottom: 8px">
-                <a-checkbox :value="api.id">{{ api.name }}</a-checkbox>
-              </a-col>
-            </a-row>
-          </a-checkbox-group>
-        </a-tab-pane>
-      </a-tabs>
-    </a-modal>
-
     <!-- 批量导入模态框 -->
     <a-modal
       v-model:open="importVisible"
@@ -527,7 +469,6 @@ import {
   UserAddOutlined,
   ImportOutlined,
   ExportOutlined,
-  SafetyOutlined,
   DownloadOutlined,
   InboxOutlined,
   SettingOutlined,
@@ -641,19 +582,6 @@ const transferVisible = ref(false)
 const currentTransferMember = ref<any>(null)
 const targetDeptId = ref('')
 const transferReason = ref('')
-
-// 权限设置
-const permissionVisible = ref(false)
-const permissionTab = ref('data')
-const permissionForm = reactive({
-  dataScope: 'dept',
-  customDepts: [] as string[],
-  menus: [] as string[],
-  apis: [] as string[],
-})
-
-const menuTree = ref<any[]>([])
-const apiList = ref<any[]>([])
 
 // 批量导入
 const importVisible = ref(false)
