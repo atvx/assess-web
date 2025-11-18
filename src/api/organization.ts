@@ -1,0 +1,145 @@
+import { request } from '@/utils/request'
+import type { ApiResponse, PageResult } from './user'
+
+/**
+ * 组织信息
+ */
+export interface Organization {
+  id: string
+  name: string // 组织名称
+  code: string // 组织编码/统一社会信用代码
+  type: string // 组织类型（使用字典：org_type）
+  leader?: string // 负责人
+  leaderPhone?: string // 负责人电话
+  email?: string // 邮箱
+  phone?: string // 联系电话
+  province?: string // 省份
+  city?: string // 城市
+  district?: string // 区县
+  address?: string // 详细地址
+  scale?: string // 组织规模（使用字典：org_scale）
+  industry?: string // 所属行业（使用字典：org_industry）
+  description?: string // 描述
+  status: 'enabled' | 'disabled' // 状态
+  userCount?: number // 用户数量
+  deptCount?: number // 部门数量
+  activityCount?: number // 活动数量
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * 组织查询条件
+ */
+export interface OrganizationQueryDTO {
+  keyword?: string // 关键词（名称、编码）
+  type?: string // 组织类型（字典值）
+  status?: 'enabled' | 'disabled' // 状态
+  province?: string // 省份
+  city?: string // 城市
+  current?: number // 当前页码
+  size?: number // 每页显示条数
+}
+
+/**
+ * 组织创建/更新 DTO
+ */
+export interface OrganizationFormDTO {
+  id?: string
+  name: string
+  code: string
+  type: string // 组织类型（字典值）
+  leader?: string
+  leaderPhone?: string
+  email?: string
+  phone?: string
+  province?: string
+  city?: string
+  district?: string
+  address?: string
+  scale?: string // 组织规模（字典值）
+  industry?: string // 所属行业（字典值）
+  description?: string
+  status?: 'enabled' | 'disabled'
+}
+
+/**
+ * 组织API
+ */
+export const organizationApi = {
+  /**
+   * 分页查询组织列表
+   */
+  getOrganizationList(
+    params: OrganizationQueryDTO,
+  ): Promise<ApiResponse<PageResult<Organization>>> {
+    return request.get('/organizations', { params })
+  },
+
+  /**
+   * 获取所有组织（用于下拉选择）
+   */
+  getAllOrganizations(): Promise<ApiResponse<Organization[]>> {
+    return request.get('/organizations/all')
+  },
+
+  /**
+   * 获取组织详情
+   */
+  getOrganizationById(id: string): Promise<ApiResponse<Organization>> {
+    return request.get(`/organizations/${id}`)
+  },
+
+  /**
+   * 创建组织
+   */
+  createOrganization(data: OrganizationFormDTO): Promise<ApiResponse<Organization>> {
+    return request.post('/organizations', data)
+  },
+
+  /**
+   * 更新组织
+   */
+  updateOrganization(data: OrganizationFormDTO): Promise<ApiResponse<Organization>> {
+    return request.put('/organizations', data)
+  },
+
+  /**
+   * 删除组织
+   */
+  deleteOrganization(id: string): Promise<ApiResponse<void>> {
+    return request.delete(`/organizations/${id}`)
+  },
+
+  /**
+   * 启用/禁用组织
+   */
+  toggleOrganizationStatus(
+    id: string,
+    status: 'enabled' | 'disabled',
+  ): Promise<ApiResponse<void>> {
+    return request.put(`/organizations/${id}/status`, { status })
+  },
+
+  /**
+   * 获取组织统计信息
+   */
+  getOrganizationStats(id: string): Promise<ApiResponse<any>> {
+    return request.get(`/organizations/${id}/stats`)
+  },
+
+  /**
+   * 获取组织下的部门列表
+   */
+  getOrganizationDepartments(id: string): Promise<ApiResponse<any[]>> {
+    return request.get(`/organizations/${id}/departments`)
+  },
+
+  /**
+   * 获取组织下的用户列表
+   */
+  getOrganizationUsers(id: string, params?: any): Promise<ApiResponse<PageResult<any>>> {
+    return request.get(`/organizations/${id}/users`, { params })
+  },
+}
+
