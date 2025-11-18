@@ -85,7 +85,7 @@
                 {{ record.name }}
               </div>
               <div class="text-sm text-gray-500 dark:text-gray-400">
-                编码：{{ record.code }}
+                {{ record.code }}
               </div>
             </div>
           </template>
@@ -328,7 +328,7 @@ const loadDictData = async () => {
 const getDictLabel = (dictCode: string, value?: string) => {
   if (!value) return '-'
   let items: DictItem[] = []
-  
+
   switch (dictCode) {
     case 'org_type':
       items = dictCache.orgType
@@ -340,7 +340,7 @@ const getDictLabel = (dictCode: string, value?: string) => {
       items = dictCache.orgIndustry
       break
   }
-  
+
   const item = items.find(item => item.value === value)
   return item?.label || value
 }
@@ -349,7 +349,7 @@ const getDictLabel = (dictCode: string, value?: string) => {
 const getDictColor = (dictCode: string, value?: string) => {
   if (!value) return 'default'
   let items: DictItem[] = []
-  
+
   switch (dictCode) {
     case 'org_type':
       items = dictCache.orgType
@@ -361,7 +361,7 @@ const getDictColor = (dictCode: string, value?: string) => {
       items = dictCache.orgIndustry
       break
   }
-  
+
   const item = items.find(item => item.value === value)
   return item?.tagType || 'default'
 }

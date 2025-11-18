@@ -167,16 +167,18 @@
       v-model:open="switchOrgVisible"
       title="切换组织"
       :footer="null"
+      :width="900"
+      :body-style="{ padding: '24px' }"
       @cancel="handleCancelSwitchOrg"
     >
-      <a-space direction="vertical" style="width: 100%" :size="16">
+      <a-space direction="vertical" style="width: 100%" :size="20">
         <!-- 搜索区域 -->
-        <a-space style="width: 100%">
+        <a-space style="width: 100%" :size="12">
           <a-input
             v-model:value="orgSearchKeyword"
             placeholder="搜索组织名称或编码"
             allow-clear
-            style="width: 280px"
+            style="flex: 1; min-width: 300px"
             @pressEnter="handleSearchOrg"
           >
             <template #prefix>
@@ -187,13 +189,13 @@
             v-model:value="orgSearchStatus"
             placeholder="状态"
             allow-clear
-            style="width: 120px"
+            style="width: 140px"
             @change="handleSearchOrg"
           >
             <a-select-option value="enabled">启用</a-select-option>
             <a-select-option value="disabled">停用</a-select-option>
           </a-select>
-          <a-button type="primary" @click="handleSearchOrg">
+          <a-button type="primary" @click="handleSearchOrg" style="width: 100px">
             <template #icon><SearchOutlined /></template>
             查询
           </a-button>
@@ -206,15 +208,15 @@
           :pagination="orgPagination"
           :loading="orgListLoading"
           row-key="id"
-          size="small"
-          :scroll="{ y: 360 }"
+          size="middle"
+          :scroll="{ y: 400 }"
           @change="handleOrgTableChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'name'">
               <div>
-                <div>{{ record.name }}</div>
-                <a-tag v-if="record.id === userStore.userInfo?.orgId" color="blue" size="small" style="margin-top: 4px">当前组织</a-tag>
+                <div style="margin-bottom: 4px">{{ record.name }}</div>
+                <a-tag v-if="record.id === userStore.userInfo?.orgId" color="blue" size="small">当前组织</a-tag>
               </div>
             </template>
             <template v-else-if="column.key === 'type'">

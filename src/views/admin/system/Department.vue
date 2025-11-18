@@ -1,1295 +1,1103 @@
+<!-- eslint-disable vue/multi-word-component-names -->
+<!-- 部门管理页面 -->
 <template>
-  <div class="department-management">
-    <!-- 组织选择器 -->
-    <a-card :bordered="false" style="margin-bottom: 16px">
-      <a-space>
-        <span style="font-weight: 500">所属组织：</span>
-        <a-select
-          v-model:value="selectedOrgId"
-          placeholder="请选择组织"
-          show-search
-          :filter-option="filterOrgOption"
-          style="width: 300px"
-          @change="handleOrgChange"
-        >
-          <a-select-option v-for="org in organizations" :key="org.id" :value="org.id">
-            <a-space>
-              <span>{{ org.name }}</span>
-              <a-tag v-if="org.dict_type" size="small">{{ org.dict_type }}</a-tag>
-            </a-space>
-          </a-select-option>
-        </a-select>
-        <a-button type="link" @click="handleManageOrg">
-          <template #icon><SettingOutlined /></template>
-          管理组织
-        </a-button>
-      </a-space>
-    </a-card>
-
-    <a-row :gutter="16" style="height: calc(100% - 80px)">
+  <div class="department-page h-full">
+    <a-row :gutter="16" class="h-full">
       <!-- 左侧：部门树 -->
-      <a-col :span="6">
-        <a-card title="部门结构" :bordered="false" style="height: 100%">
-          <template #extra>
-            <a-space>
-              <a-button type="primary" size="small" @click="handleAddRootDept" :disabled="!selectedOrgId">
-                <template #icon><PlusOutlined /></template>
-                添加根部门
+      <a-col :xs="24" :sm="24" :md="8" :lg="7" :xl="6">
+        <a-card class="h-full rounded-lg shadow" :bordered="false">
+          <template #title>
+            <div class="flex items-center justify-between">
+              <span class="text-lg font-semibold text-gray-900 dark:text-white">部门结构</span>
+              <a-button
+                type="primary"
+                size="small"
+                @click="handleAddRootDepartment"
+              >
+                <template #icon>
+                  <PlusOutlined />
+                </template>
+                添加部门
               </a-button>
-              <a-button size="small" @click="loadDepartmentTree">
-                <template #icon><ReloadOutlined /></template>
-              </a-button>
-            </a-space>
+            </div>
           </template>
 
           <!-- 搜索框 -->
           <a-input-search
-            v-model:value="searchKeyword"
-            placeholder="搜索部门名称"
-            style="margin-bottom: 12px"
-            @search="handleSearch"
+            v-model:value="treeSearchKeyword"
+            placeholder="搜索部门"
+            allow-clear
+            class="mb-4"
+            @search="handleTreeSearch"
           />
 
           <!-- 部门树 -->
-          <div v-if="!selectedOrgId">
-            <a-empty description="请先选择一个组织" />
+          <div class="department-tree-wrapper">
+            <a-spin :spinning="treeLoading">
+              <a-empty
+                v-if="!treeData.length && !treeLoading"
+                description="暂无部门数据"
+              />
+              <a-tree
+                v-else
+                v-model:expanded-keys="expandedKeys"
+                v-model:selected-keys="selectedKeys"
+                :tree-data="filteredTreeData"
+                :show-line="{ showLeafIcon: false }"
+                :field-names="{ title: 'name', key: 'id', children: 'children' }"
+                draggable
+                block-node
+                @select="handleTreeSelect"
+                @drop="handleTreeDrop"
+              >
+                <template #title="node">
+                  <div class="tree-node-title">
+                    <span class="node-name">{{ node.name }}</span>
+                    <a-dropdown
+                      :trigger="['click']"
+                      placement="bottomRight"
+                    >
+                      <a-button
+                        type="text"
+                        size="small"
+                        class="node-action-btn"
+                        @click.stop
+                      >
+                        <MoreOutlined />
+                      </a-button>
+                      <template #overlay>
+                        <a-menu @click="handleTreeAction">
+                          <a-menu-item
+                            :key="`add-${node.id}`"
+                            :data-action="'add'"
+                            :data-node-id="node.id"
+                          >
+                            <PlusOutlined />
+                            添加子部门
+                          </a-menu-item>
+                          <a-menu-item
+                            v-if="!isRootNode(node)"
+                            :key="`edit-${node.id}`"
+                            :data-action="'edit'"
+                            :data-node-id="node.id"
+                          >
+                            <EditOutlined />
+                            编辑
+                          </a-menu-item>
+                          <a-menu-item
+                            v-if="canMoveUp(node)"
+                            :key="`up-${node.id}`"
+                            :data-action="'up'"
+                            :data-node-id="node.id"
+                          >
+                            <ArrowUpOutlined />
+                            上移
+                          </a-menu-item>
+                          <a-menu-item
+                            v-if="canMoveDown(node)"
+                            :key="`down-${node.id}`"
+                            :data-action="'down'"
+                            :data-node-id="node.id"
+                          >
+                            <ArrowDownOutlined />
+                            下移
+                          </a-menu-item>
+                          <a-menu-divider v-if="!isRootNode(node)" />
+                          <a-menu-item
+                            v-if="!isRootNode(node)"
+                            :key="`delete-${node.id}`"
+                            :data-action="'delete'"
+                            :data-node-id="node.id"
+                            danger
+                          >
+                            <DeleteOutlined />
+                            删除
+                          </a-menu-item>
+                        </a-menu>
+                      </template>
+                    </a-dropdown>
+                  </div>
+                </template>
+              </a-tree>
+            </a-spin>
           </div>
-          <a-tree
-            v-else-if="departmentTree.length > 0"
-            :tree-data="departmentTree"
-            :field-names="{ children: 'children', title: 'name', key: 'id' }"
-            :selected-keys="selectedKeys"
-            :expanded-keys="expandedKeys"
-            show-line
-            @select="handleSelectDept"
-            @expand="handleExpand"
-          >
-            <template #title="{ name, memberCount }">
-              <span>{{ name }} <a-tag v-if="memberCount" size="small">{{ memberCount }}</a-tag></span>
-            </template>
-          </a-tree>
-          <a-empty v-else description="暂无部门数据" />
         </a-card>
       </a-col>
 
-      <!-- 右侧：部门详情和人员管理 -->
-      <a-col :span="18">
-        <a-card v-if="selectedDept" :bordered="false">
-          <!-- 部门信息 -->
-          <template #title>
-            <a-space>
-              <span>{{ selectedDept.name }}</span>
-              <a-tag :color="selectedDept.enabled ? 'success' : 'default'">
-                {{ selectedDept.enabled ? '启用' : '停用' }}
-              </a-tag>
-            </a-space>
-          </template>
-          <template #extra>
-            <a-space>
-              <a-button size="small" @click="handleAddSubDept">
-                <template #icon><PlusOutlined /></template>
-                添加子部门
-              </a-button>
-              <a-button size="small" @click="handleEditDept(selectedDept)">
-                <template #icon><EditOutlined /></template>
-                编辑
-              </a-button>
-              <a-popconfirm
-                title="确定要删除该部门吗？"
-                ok-text="确定"
-                cancel-text="取消"
-                @confirm="handleDeleteDept(selectedDept.id)"
-              >
-                <a-button size="small" danger>
-                  <template #icon><DeleteOutlined /></template>
-                  删除
-                </a-button>
-              </a-popconfirm>
-            </a-space>
-          </template>
-
-          <!-- 基本信息 -->
-          <a-descriptions bordered :column="2" style="margin-bottom: 24px">
-            <a-descriptions-item label="所属组织" :span="2">
-              {{ organizations.find(org => org.id === selectedOrgId)?.name || '-' }}
-            </a-descriptions-item>
-            <a-descriptions-item label="部门编码">{{ selectedDept.code }}</a-descriptions-item>
-            <a-descriptions-item label="部门类型">{{ selectedDept.type }}</a-descriptions-item>
-            <a-descriptions-item label="上级部门">{{ selectedDept.parentName || '无' }}</a-descriptions-item>
-            <a-descriptions-item label="负责人">{{ selectedDept.leader || '未设置' }}</a-descriptions-item>
-            <a-descriptions-item label="联系电话">{{ selectedDept.phone || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="邮箱">{{ selectedDept.email || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="排序">{{ selectedDept.sort }}</a-descriptions-item>
-            <a-descriptions-item label="创建时间">{{ selectedDept.createdAt }}</a-descriptions-item>
-            <a-descriptions-item label="部门描述" :span="2">
-              {{ selectedDept.description || '暂无描述' }}
-            </a-descriptions-item>
-          </a-descriptions>
-
-          <!-- 部门人员 -->
-          <a-card title="部门人员" :bordered="false" size="small">
-            <template #extra>
-              <a-space>
-                <a-button type="primary" size="small" @click="handleAddMember">
-                  <template #icon><UserAddOutlined /></template>
-                  添加成员
-                </a-button>
-                <a-button size="small" @click="handleImportMembers">
-                  <template #icon><ImportOutlined /></template>
-                  批量导入
-                </a-button>
-                <a-button size="small" @click="handleExportMembers">
-                  <template #icon><ExportOutlined /></template>
-                  导出成员
-                </a-button>
-              </a-space>
-            </template>
-
-            <!-- 搜索和筛选 -->
-            <a-row :gutter="16" style="margin-bottom: 16px">
-              <a-col :span="8">
+      <!-- 右侧：部门列表 -->
+      <a-col :xs="24" :sm="24" :md="16" :lg="17" :xl="18">
+        <div class="department-list-section">
+          <!-- 搜索表单 -->
+          <a-card class="mb-4 rounded-lg shadow" :bordered="false">
+            <a-form layout="inline" :model="queryParams" @submit.prevent="handleSearch">
+              <a-form-item label="关键词">
                 <a-input
-                  v-model:value="memberFilters.keyword"
-                  placeholder="搜索姓名/工号/手机号"
+                  v-model:value="queryParams.keyword"
+                  placeholder="搜索部门名称或编码"
                   allow-clear
-                  @pressEnter="loadMembers"
-                >
-                  <template #prefix><SearchOutlined /></template>
-                </a-input>
-              </a-col>
-              <a-col :span="4">
+                  style="width: 220px"
+                  @pressEnter="handleSearch"
+                />
+              </a-form-item>
+
+              <a-form-item label="状态">
                 <a-select
-                  v-model:value="memberFilters.status"
-                  placeholder="状态"
+                  v-model:value="queryParams.status"
+                  placeholder="请选择状态"
                   allow-clear
-                  style="width: 100%"
-                  @change="loadMembers"
+                  style="width: 120px"
                 >
-                  <a-select-option value="active">在职</a-select-option>
-                  <a-select-option value="inactive">离职</a-select-option>
+                  <a-select-option value="enabled">启用</a-select-option>
+                  <a-select-option value="disabled">禁用</a-select-option>
                 </a-select>
-              </a-col>
-              <a-col :span="4">
-                <a-select
-                  v-model:value="memberFilters.role"
-                  placeholder="角色"
-                  allow-clear
-                  style="width: 100%"
-                  @change="loadMembers"
-                >
-                  <a-select-option value="leader">负责人</a-select-option>
-                  <a-select-option value="member">成员</a-select-option>
-                </a-select>
-              </a-col>
-              <a-col :span="8">
+              </a-form-item>
+
+              <a-form-item>
                 <a-space>
-                  <a-button type="primary" @click="loadMembers">
-                    <template #icon><SearchOutlined /></template>
+                  <a-button type="primary" html-type="submit" :loading="tableLoading">
+                    <template #icon>
+                      <SearchOutlined />
+                    </template>
                     查询
                   </a-button>
-                  <a-button @click="handleResetMemberFilters">重置</a-button>
+                  <a-button @click="handleReset">
+                    <template #icon>
+                      <ReloadOutlined />
+                    </template>
+                    重置
+                  </a-button>
+                  <a-button @click="handleRefreshTree" :loading="refreshLoading">
+                    <template #icon>
+                      <SyncOutlined />
+                    </template>
+                    刷新树
+                  </a-button>
                 </a-space>
-              </a-col>
-            </a-row>
+              </a-form-item>
+            </a-form>
+          </a-card>
 
-            <!-- 成员表格 -->
+          <!-- 部门列表 -->
+          <a-card class="rounded-lg shadow" :bordered="false">
+            <template #title>
+              <div class="flex items-center justify-between">
+                <span class="text-lg font-semibold text-gray-900 dark:text-white">
+                  部门列表
+                  <span v-if="selectedDepartment" class="text-sm font-normal text-gray-500 ml-2">
+                    （当前选中：{{ selectedDepartment.name }}）
+                  </span>
+                </span>
+                <a-space>
+                  <a-button @click="handleDownloadTemplate">
+                    <template #icon>
+                      <DownloadOutlined />
+                    </template>
+                    下载模板
+                  </a-button>
+                  <a-upload
+                    :show-upload-list="false"
+                    :before-upload="handleImport"
+                    accept=".xlsx,.xls"
+                  >
+                    <a-button>
+                      <template #icon>
+                        <UploadOutlined />
+                      </template>
+                      导入
+                    </a-button>
+                  </a-upload>
+                  <a-button @click="handleExport">
+                    <template #icon>
+                      <ExportOutlined />
+                    </template>
+                    导出
+                  </a-button>
+                </a-space>
+              </div>
+            </template>
+
             <a-table
-              :columns="memberColumns"
-              :data-source="members"
-              :loading="memberLoading"
-              :pagination="memberPagination"
-              :row-selection="memberRowSelection"
+              :columns="columns"
+              :data-source="departmentList"
+              :loading="tableLoading"
+              :pagination="false"
+              :scroll="{ x: 1200 }"
               row-key="id"
-              @change="handleMemberTableChange"
             >
               <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'user'">
-                  <a-space>
-                    <a-avatar :src="record.avatar" :size="32">{{ record.name?.charAt(0) }}</a-avatar>
-                    <div>
-                      <div>{{ record.name }}</div>
-                      <div style="font-size: 12px; color: #999">{{ record.employeeNo }}</div>
+                <!-- 部门信息 -->
+                <template v-if="column.key === 'department'">
+                  <div>
+                    <div class="font-medium text-gray-900 dark:text-white">
+                      {{ record.name }}
                     </div>
-                  </a-space>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">
+                      {{ record.code }}
+                    </div>
+                  </div>
                 </template>
-                <template v-else-if="column.key === 'role'">
-                  <a-tag :color="record.isLeader ? 'blue' : 'default'">
-                    {{ record.isLeader ? '负责人' : '成员' }}
-                  </a-tag>
+
+                <!-- 上级部门 -->
+                <template v-else-if="column.key === 'parent'">
+                  <span class="text-sm">
+                    {{ record.parentName || '-' }}
+                  </span>
                 </template>
+
+                <!-- 排序 -->
+                <template v-else-if="column.key === 'sort'">
+                  <span class="text-sm">{{ record.sort }}</span>
+                </template>
+
+                <!-- 状态 -->
                 <template v-else-if="column.key === 'status'">
-                  <a-tag :color="record.status === 'active' ? 'success' : 'default'">
-                    {{ record.status === 'active' ? '在职' : '离职' }}
+                  <a-tag :color="record.status === 'enabled' ? 'green' : 'red'">
+                    {{ record.status === 'enabled' ? '启用' : '禁用' }}
                   </a-tag>
                 </template>
+
+                <!-- 创建时间 -->
+                <template v-else-if="column.key === 'createdAt'">
+                  <span class="text-sm text-gray-500 dark:text-gray-400">
+                    {{ formatDate(record.createdAt) }}
+                  </span>
+                </template>
+
+                <!-- 操作 -->
                 <template v-else-if="column.key === 'action'">
                   <a-space>
-                    <a @click="handleSetLeader(record)">
-                      {{ record.isLeader ? '取消负责人' : '设为负责人' }}
-                    </a>
-                    <a @click="handleTransferMember(record)">调动</a>
-                    <a-popconfirm
-                      title="确定要移除该成员吗？"
-                      ok-text="确定"
-                      cancel-text="取消"
-                      @confirm="handleRemoveMember(record.id)"
+                    <a-button type="link" size="small" @click="handleEdit(record)">
+                      编辑
+                    </a-button>
+                    <a-button
+                      type="link"
+                      size="small"
+                      danger
+                      @click="handleDelete(record)"
                     >
-                      <a style="color: #ff4d4f">移除</a>
-                    </a-popconfirm>
+                      删除
+                    </a-button>
                   </a-space>
                 </template>
               </template>
             </a-table>
-          </a-card>
-        </a-card>
 
-        <!-- 未选择部门时的提示 -->
-        <a-card v-else :bordered="false" style="height: 100%">
-          <a-empty description="请从左侧选择一个部门" />
-        </a-card>
+            <!-- 分页 -->
+            <div class="mt-6 flex justify-end">
+              <a-pagination
+                v-model:current="pagination.current"
+                v-model:page-size="pagination.size"
+                :total="pagination.total"
+                :show-total="(total: number) => `共 ${total} 个部门`"
+                :page-size-options="['10', '20', '50', '100']"
+                show-size-changer
+                show-quick-jumper
+                @change="handlePageChange"
+              />
+            </div>
+          </a-card>
+        </div>
       </a-col>
     </a-row>
 
-    <!-- 新增/编辑部门抽屉 -->
-    <a-drawer
-      v-model:open="deptDrawerVisible"
-      :title="deptForm.id ? '编辑部门' : '新增部门'"
-      width="600"
-      @close="handleCloseDeptDrawer"
+    <!-- 新增/编辑部门弹窗 -->
+    <a-modal
+      v-model:open="formModalVisible"
+      :title="formData.id ? '编辑部门' : '新增部门'"
+      :width="700"
+      :confirm-loading="formLoading"
+      @ok="handleSubmit"
+      @cancel="handleFormClose"
     >
       <a-form
-        ref="deptFormRef"
-        :model="deptForm"
-        :rules="deptFormRules"
+        ref="formRef"
+        :model="formData"
+        :rules="formRules"
         :label-col="{ span: 6 }"
-        :wrapper-col="{ span: 18 }"
+        :wrapper-col="{ span: 16 }"
       >
-        <a-form-item label="所属组织" name="orgId">
-          <a-select
-            v-model:value="deptForm.orgId"
-            placeholder="请选择所属组织"
-            show-search
-            :filter-option="filterOrgOption"
-            disabled
-          >
-            <a-select-option v-for="org in organizations" :key="org.id" :value="org.id">
-              {{ org.name }}
-            </a-select-option>
-          </a-select>
+        <a-form-item label="部门名称" name="name">
+          <a-input v-model:value="formData.name" placeholder="请输入部门名称" />
+        </a-form-item>
+        <a-form-item label="部门编码" name="code">
+          <a-input v-model:value="formData.code" placeholder="请输入部门编码（可选）" />
         </a-form-item>
         <a-form-item label="上级部门" name="parentId">
           <a-tree-select
-            v-model:value="deptForm.parentId"
-            :tree-data="departmentTree"
-            :field-names="{ children: 'children', label: 'name', value: 'id' }"
+            v-model:value="formData.parentId"
+            :tree-data="parentTreeData"
+            :field-names="{ label: 'name', value: 'id', children: 'children' }"
             placeholder="请选择上级部门（不选则为根部门）"
             allow-clear
             tree-default-expand-all
           />
         </a-form-item>
-        <a-form-item label="部门名称" name="name">
-          <a-input v-model:value="deptForm.name" placeholder="请输入部门名称" />
-        </a-form-item>
-        <a-form-item label="部门编码" name="code">
-          <a-input v-model:value="deptForm.code" placeholder="请输入部门编码" />
-        </a-form-item>
-        <a-form-item label="部门类型" name="type">
-          <a-select v-model:value="deptForm.type" placeholder="请选择部门类型">
-            <a-select-option value="company">公司</a-select-option>
-            <a-select-option value="branch">分公司</a-select-option>
-            <a-select-option value="department">部门</a-select-option>
-            <a-select-option value="group">小组</a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item label="负责人" name="leader">
-          <a-select
-            v-model:value="deptForm.leader"
-            placeholder="请选择负责人"
-            show-search
-            :filter-option="filterUserOption"
-            allow-clear
-          >
-            <a-select-option v-for="user in allUsers" :key="user.id" :value="user.id">
-              {{ user.name }} ({{ user.employeeNo }})
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item label="联系电话" name="phone">
-          <a-input v-model:value="deptForm.phone" placeholder="请输入联系电话" />
-        </a-form-item>
-        <a-form-item label="邮箱" name="email">
-          <a-input v-model:value="deptForm.email" placeholder="请输入邮箱" />
-        </a-form-item>
         <a-form-item label="排序" name="sort">
-          <a-input-number v-model:value="deptForm.sort" :min="0" style="width: 100%" />
+          <a-input-number
+            v-model:value="formData.sort"
+            :min="0"
+            placeholder="请输入排序号"
+            class="w-full"
+          />
         </a-form-item>
-        <a-form-item label="状态" name="enabled">
-          <a-switch v-model:checked="deptForm.enabled" checked-children="启用" un-checked-children="停用" />
+        <a-form-item label="状态" name="status">
+          <a-radio-group v-model:value="formData.status">
+            <a-radio value="enabled">启用</a-radio>
+            <a-radio value="disabled">禁用</a-radio>
+          </a-radio-group>
         </a-form-item>
-        <a-form-item label="部门描述" name="description">
+        <a-form-item label="描述" name="description">
           <a-textarea
-            v-model:value="deptForm.description"
-            placeholder="请输入部门描述"
-            :rows="4"
-            :maxlength="200"
-            show-count
+            v-model:value="formData.description"
+            placeholder="请输入部门描述（可选）"
+            :rows="3"
           />
         </a-form-item>
       </a-form>
-      <template #footer>
-        <a-space>
-          <a-button @click="handleCloseDeptDrawer">取消</a-button>
-          <a-button type="primary" :loading="deptSubmitting" @click="handleSubmitDept">
-            确定
-          </a-button>
-        </a-space>
-      </template>
-    </a-drawer>
-
-    <!-- 添加成员模态框 -->
-    <a-modal
-      v-model:open="addMemberVisible"
-      title="添加部门成员"
-      width="800"
-      @ok="handleSubmitAddMember"
-      @cancel="handleCancelAddMember"
-    >
-      <a-form layout="vertical">
-        <a-form-item label="选择成员">
-          <a-input
-            v-model:value="userSearchKeyword"
-            placeholder="搜索用户名/工号"
-            style="margin-bottom: 12px"
-            @pressEnter="searchUsers"
-          >
-            <template #prefix><SearchOutlined /></template>
-          </a-input>
-          <a-table
-            :columns="userSelectColumns"
-            :data-source="availableUsers"
-            :row-selection="userRowSelection"
-            :loading="userSearchLoading"
-            :pagination="userPagination"
-            row-key="id"
-            size="small"
-            @change="handleUserTableChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'user'">
-                <a-space>
-                  <a-avatar :src="record.avatar" :size="24">{{ record.name?.charAt(0) }}</a-avatar>
-                  <div>
-                    <div>{{ record.name }}</div>
-                    <div style="font-size: 12px; color: #999">{{ record.employeeNo }}</div>
-                  </div>
-                </a-space>
-              </template>
-              <template v-else-if="column.key === 'department'">
-                {{ record.departmentName || '未分配' }}
-              </template>
-            </template>
-          </a-table>
-        </a-form-item>
-      </a-form>
-    </a-modal>
-
-    <!-- 成员调动模态框 -->
-    <a-modal
-      v-model:open="transferVisible"
-      title="成员调动"
-      @ok="handleSubmitTransfer"
-      @cancel="transferVisible = false"
-    >
-      <a-form layout="vertical">
-        <a-form-item label="调动成员">
-          <a-input :value="currentTransferMember?.name" disabled />
-        </a-form-item>
-        <a-form-item label="目标部门">
-          <a-tree-select
-            v-model:value="targetDeptId"
-            :tree-data="departmentTree"
-            :field-names="{ children: 'children', label: 'name', value: 'id' }"
-            placeholder="请选择目标部门"
-            tree-default-expand-all
-          />
-        </a-form-item>
-        <a-form-item label="调动原因">
-          <a-textarea v-model:value="transferReason" placeholder="请输入调动原因" :rows="3" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-
-    <!-- 批量导入模态框 -->
-    <a-modal
-      v-model:open="importVisible"
-      title="批量导入成员"
-      @ok="handleSubmitImport"
-      @cancel="importVisible = false"
-    >
-      <a-space direction="vertical" style="width: 100%">
-        <a-alert
-          message="导入说明"
-          description="请下载模板文件，按照模板格式填写成员信息后上传。支持 Excel (.xlsx, .xls) 格式。"
-          type="info"
-          show-icon
-        />
-        <a-button type="link" @click="handleDownloadTemplate">
-          <template #icon><DownloadOutlined /></template>
-          下载导入模板
-        </a-button>
-        <a-upload-dragger
-          v-model:fileList="importFileList"
-          name="file"
-          :multiple="false"
-          :before-upload="beforeUpload"
-          @remove="handleRemoveFile"
-        >
-          <p class="ant-upload-drag-icon">
-            <InboxOutlined />
-          </p>
-          <p class="ant-upload-text">点击或拖拽文件到此区域上传</p>
-          <p class="ant-upload-hint">支持 Excel 文件格式（.xlsx, .xls）</p>
-        </a-upload-dragger>
-        <a-alert v-if="importResult" :message="importResult.message" :type="importResult.type" show-icon />
-      </a-space>
     </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { message } from 'ant-design-vue'
-import type { FormInstance, TableColumnsType, TableProps } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
+import type { FormInstance } from 'ant-design-vue'
 import {
+  SearchOutlined,
+  ReloadOutlined,
   PlusOutlined,
+  MoreOutlined,
   EditOutlined,
   DeleteOutlined,
-  ReloadOutlined,
-  SearchOutlined,
-  UserAddOutlined,
-  ImportOutlined,
-  ExportOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
   DownloadOutlined,
-  InboxOutlined,
-  SettingOutlined,
+  UploadOutlined,
+  ExportOutlined,
+  SyncOutlined,
 } from '@ant-design/icons-vue'
+import {
+  departmentApi,
+  type Department,
+  type DepartmentFormDTO,
+} from '@/api/department'
+import { useUserStore } from '@/stores/user'
+import dayjs from 'dayjs'
 
-// 组织数据
-const organizations = ref<any[]>([])
-const selectedOrgId = ref<string>('')
+// ==================== 用户信息 ====================
+const userStore = useUserStore()
+const currentOrgId = computed(() => userStore.userInfo?.orgId || '')
 
-// 部门树数据
-const departmentTree = ref<any[]>([])
-const selectedKeys = ref<string[]>([])
+// ==================== 树形结构相关 ====================
+const treeData = ref<Department[]>([])
+const filteredTreeData = ref<Department[]>([])
 const expandedKeys = ref<string[]>([])
-const searchKeyword = ref('')
+const selectedKeys = ref<string[]>([])
+const treeSearchKeyword = ref('')
+const treeLoading = ref(false)
+const refreshLoading = ref(false)
+const selectedDepartment = ref<Department | null>(null)
 
-// 选中的部门
-const selectedDept = ref<any>(null)
+// ==================== 表格列表相关 ====================
+const departmentList = ref<Department[]>([])
+const tableLoading = ref(false)
 
-// 部门表单
-const deptDrawerVisible = ref(false)
-const deptFormRef = ref<FormInstance>()
-const deptForm = reactive({
-  id: '',
-  orgId: '',
-  parentId: '',
-  name: '',
-  code: '',
-  type: 'department',
-  leader: '',
-  phone: '',
-  email: '',
-  sort: 0,
-  enabled: true,
-  description: '',
-})
-const deptSubmitting = ref(false)
-
-const deptFormRules = {
-  orgId: [{ required: true, message: '请选择所属组织', trigger: 'change' }],
-  name: [{ required: true, message: '请输入部门名称', trigger: 'blur' }],
-  code: [{ required: true, message: '请输入部门编码', trigger: 'blur' }],
-  type: [{ required: true, message: '请选择部门类型', trigger: 'change' }],
-}
-
-// 全部用户列表（用于选择负责人）
-const allUsers = ref<any[]>([])
-
-// 成员管理
-const members = ref<any[]>([])
-const memberLoading = ref(false)
-const memberFilters = reactive({
+// 查询参数
+const queryParams = reactive<{
+  keyword: string
+  status: 'enabled' | 'disabled' | undefined
+  orgId: string
+  parentId: string | undefined
+}>({
   keyword: '',
   status: undefined,
-  role: undefined,
-})
-const memberPagination = reactive({
-  current: 1,
-  pageSize: 10,
-  total: 0,
-  showSizeChanger: true,
-  showQuickJumper: true,
-  showTotal: (total: number) => `共 ${total} 条`,
+  orgId: currentOrgId.value,
+  parentId: undefined,
 })
 
-const memberColumns: TableColumnsType = [
-  { title: '成员信息', key: 'user', width: 200 },
-  { title: '职位', dataIndex: 'position', key: 'position' },
-  { title: '角色', key: 'role', width: 100 },
-  { title: '手机号', dataIndex: 'phone', key: 'phone' },
-  { title: '邮箱', dataIndex: 'email', key: 'email' },
-  { title: '状态', key: 'status', width: 80 },
-  { title: '加入时间', dataIndex: 'joinedAt', key: 'joinedAt', width: 180 },
-  { title: '操作', key: 'action', width: 180, fixed: 'right' },
-]
-
-const selectedMemberIds = ref<string[]>([])
-const memberRowSelection = {
-  selectedRowKeys: selectedMemberIds,
-  onChange: (selectedRowKeys: string[]) => {
-    selectedMemberIds.value = selectedRowKeys
-  },
-}
-
-// 添加成员
-const addMemberVisible = ref(false)
-const availableUsers = ref<any[]>([])
-const userSearchKeyword = ref('')
-const userSearchLoading = ref(false)
-const selectedUserIds = ref<string[]>([])
-const userPagination = reactive({
+// 分页信息
+const pagination = reactive({
   current: 1,
-  pageSize: 5,
+  size: 10,
   total: 0,
 })
 
-const userSelectColumns: TableColumnsType = [
-  { title: '用户信息', key: 'user', width: 200 },
-  { title: '职位', dataIndex: 'position', key: 'position' },
-  { title: '当前部门', key: 'department' },
+// 表格列定义
+const columns = [
+  {
+    title: '部门信息',
+    key: 'department',
+    width: 220,
+    fixed: 'left',
+  },
+  {
+    title: '上级部门',
+    key: 'parent',
+    width: 150,
+  },
+  {
+    title: '排序',
+    key: 'sort',
+    width: 100,
+  },
+  {
+    title: '状态',
+    key: 'status',
+    width: 100,
+  },
+  {
+    title: '创建时间',
+    key: 'createdAt',
+    width: 160,
+  },
+  {
+    title: '操作',
+    key: 'action',
+    width: 150,
+    fixed: 'right',
+  },
 ]
 
-const userRowSelection = {
-  selectedRowKeys: selectedUserIds,
-  onChange: (selectedRowKeys: string[]) => {
-    selectedUserIds.value = selectedRowKeys
-  },
+// ==================== 表单相关 ====================
+const formModalVisible = ref(false)
+const formLoading = ref(false)
+const formRef = ref<FormInstance>()
+
+const formData = reactive<DepartmentFormDTO>({
+  name: '',
+  code: '',
+  parentId: undefined,
+  orgId: currentOrgId.value,
+  sort: 0,
+  description: '',
+  status: 'enabled',
+})
+
+const formRules = {
+  name: [{ required: true, message: '请输入部门名称', trigger: 'blur' }],
 }
 
-// 成员调动
-const transferVisible = ref(false)
-const currentTransferMember = ref<any>(null)
-const targetDeptId = ref('')
-const transferReason = ref('')
-
-// 批量导入
-const importVisible = ref(false)
-const importFileList = ref<any[]>([])
-const importResult = ref<any>(null)
-
-// 加载组织列表
-const loadOrganizations = async () => {
-  try {
-    // TODO: 调用 API
-    // const res = await getOrganizationList()
-    // organizations.value = res.data
-
-    // 模拟数据
-    organizations.value = [
-      {
-        id: '1',
-        name: '华为技术有限公司',
-        code: '91440300279320043W',
-        dict_type: '企业',
-        dict_scale: '大型',
-        dict_industry: '信息技术',
-        status: 'enabled',
-      },
-      {
-        id: '2',
-        name: '腾讯控股有限公司',
-        code: '91440300708461136T',
-        dict_type: '企业',
-        dict_scale: '大型',
-        dict_industry: '互联网',
-        status: 'enabled',
-      },
-      {
-        id: '3',
-        name: '深圳大学',
-        code: '12440000455820233C',
-        dict_type: '高校',
-        dict_scale: '中型',
-        dict_industry: '教育',
-        status: 'enabled',
-      },
-    ]
-
-    // 默认选中第一个组织
-    if (organizations.value.length > 0 && !selectedOrgId.value) {
-      selectedOrgId.value = organizations.value[0].id
-      await loadDepartmentTree()
-    }
-  } catch (error) {
-    message.error('加载组织列表失败')
+// 上级部门树数据（排除自己和子孙节点）
+const parentTreeData = computed(() => {
+  if (!formData.id) {
+    return treeData.value
   }
+  // 编辑时需要排除自己和子孙节点
+  return filterSelfAndDescendants(treeData.value, formData.id)
+})
+
+// 过滤自己和子孙节点
+const filterSelfAndDescendants = (nodes: Department[], excludeId: string): Department[] => {
+  return nodes
+    .filter(node => node.id !== excludeId)
+    .map(node => ({
+      ...node,
+      children: node.children ? filterSelfAndDescendants(node.children, excludeId) : undefined,
+    }))
 }
 
-// 组织切换
-const handleOrgChange = async (orgId: string) => {
-  selectedOrgId.value = orgId
-  selectedDept.value = null
-  selectedKeys.value = []
-  await loadDepartmentTree()
+// ==================== 工具函数 ====================
+// 格式化日期
+const formatDate = (date: string) => {
+  return dayjs(date).format('YYYY-MM-DD HH:mm')
 }
 
-// 过滤组织选项
-const filterOrgOption = (input: string, option: any) => {
-  const text = option.children?.find((child: any) => typeof child === 'string') || ''
-  return text.toLowerCase().includes(input.toLowerCase())
+// 判断是否为根节点
+const isRootNode = (node: Department) => {
+  return node.id === currentOrgId.value || !node.parentId
 }
 
-// 管理组织
-const handleManageOrg = () => {
-  // TODO: 跳转到组织管理页面
-  message.info('跳转到组织管理页面')
+// 判断是否可以上移
+const canMoveUp = (node: Department) => {
+  if (isRootNode(node)) return false
+
+  // 查找父节点
+  const parent = findParentNode(treeData.value, node.id)
+  if (!parent || !parent.children) return false
+
+  // 判断是否为第一个子节点
+  const index = parent.children.findIndex(child => child.id === node.id)
+  return index > 0
 }
 
-// 加载部门树
-const loadDepartmentTree = async () => {
-  if (!selectedOrgId.value) {
-    departmentTree.value = []
-    return
-  }
-  try {
-    // TODO: 调用 API
-    // const res = await getDepartmentTree()
-    // departmentTree.value = res.data
+// 判断是否可以下移
+const canMoveDown = (node: Department) => {
+  if (isRootNode(node)) return false
 
-    // 模拟数据
-    departmentTree.value = [
-      {
-        id: '1',
-        name: '总公司',
-        code: 'ROOT',
-        type: 'company',
-        memberCount: 156,
-        children: [
-          {
-            id: '2',
-            name: '技术部',
-            code: 'TECH',
-            type: 'department',
-            memberCount: 45,
-            children: [
-              { id: '3', name: '前端组', code: 'TECH-FE', type: 'group', memberCount: 15 },
-              { id: '4', name: '后端组', code: 'TECH-BE', type: 'group', memberCount: 18 },
-              { id: '5', name: '测试组', code: 'TECH-QA', type: 'group', memberCount: 12 },
-            ],
-          },
-          {
-            id: '6',
-            name: '产品部',
-            code: 'PROD',
-            type: 'department',
-            memberCount: 23,
-          },
-          {
-            id: '7',
-            name: '市场部',
-            code: 'MKT',
-            type: 'department',
-            memberCount: 28,
-          },
-          {
-            id: '8',
-            name: '人事行政部',
-            code: 'HR',
-            type: 'department',
-            memberCount: 15,
-          },
-        ],
-      },
-    ]
+  // 查找父节点
+  const parent = findParentNode(treeData.value, node.id)
+  if (!parent || !parent.children) return false
 
-    // 默认展开所有节点
-    expandedKeys.value = getAllKeys(departmentTree.value)
-  } catch (error) {
-    message.error('加载部门树失败')
-  }
+  // 判断是否为最后一个子节点
+  const index = parent.children.findIndex(child => child.id === node.id)
+  return index < parent.children.length - 1
 }
 
-// 获取所有节点的 key
-const getAllKeys = (tree: any[]): string[] => {
-  const keys: string[] = []
-  const traverse = (nodes: any[]) => {
-    nodes.forEach((node) => {
-      keys.push(node.id)
-      if (node.children && node.children.length > 0) {
-        traverse(node.children)
+// 查找父节点
+const findParentNode = (nodes: Department[], childId: string): Department | null => {
+  for (const node of nodes) {
+    if (node.children) {
+      if (node.children.some(child => child.id === childId)) {
+        return node
       }
-    })
+      const found = findParentNode(node.children, childId)
+      if (found) return found
+    }
   }
-  traverse(tree)
+  return null
+}
+
+// 查找节点
+const findNode = (nodes: Department[], nodeId: string): Department | null => {
+  for (const node of nodes) {
+    if (node.id === nodeId) return node
+    if (node.children) {
+      const found = findNode(node.children, nodeId)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+// 树形搜索过滤
+const filterTree = (nodes: Department[], keyword: string): Department[] => {
+  if (!keyword) return nodes
+
+  return nodes
+    .map(node => {
+      const match = node.name.toLowerCase().includes(keyword.toLowerCase()) ||
+                   (node.code?.toLowerCase().includes(keyword.toLowerCase()) ?? false)
+
+      const children = node.children ? filterTree(node.children, keyword) : []
+
+      if (match || children.length > 0) {
+        return {
+          ...node,
+          children: children.length > 0 ? children : node.children,
+        }
+      }
+      return null
+    })
+    .filter(Boolean) as Department[]
+}
+
+// 展开所有匹配的节点
+const expandMatchedNodes = (nodes: Department[], keyword: string, keys: string[] = []): string[] => {
+  nodes.forEach(node => {
+    if (node.name.toLowerCase().includes(keyword.toLowerCase()) ||
+        (node.code?.toLowerCase().includes(keyword.toLowerCase()) ?? false)) {
+      keys.push(node.id)
+    }
+    if (node.children) {
+      expandMatchedNodes(node.children, keyword, keys)
+      // 如果子节点匹配，展开父节点
+      if (node.children.some(child =>
+        child.name.toLowerCase().includes(keyword.toLowerCase()) ||
+        (child.code?.toLowerCase().includes(keyword.toLowerCase()) ?? false)
+      )) {
+        keys.push(node.id)
+      }
+    }
+  })
   return keys
 }
 
-// 搜索部门
-const handleSearch = () => {
-  if (!searchKeyword.value) {
-    expandedKeys.value = getAllKeys(departmentTree.value)
-    return
-  }
-
-  // 搜索匹配的节点并展开
-  const matchedKeys: string[] = []
-  const searchInTree = (nodes: any[]) => {
-    nodes.forEach((node) => {
-      if (node.name.includes(searchKeyword.value)) {
-        matchedKeys.push(node.id)
-      }
-      if (node.children && node.children.length > 0) {
-        searchInTree(node.children)
-      }
-    })
-  }
-  searchInTree(departmentTree.value)
-  expandedKeys.value = matchedKeys
-}
-
-// 选择部门
-const handleSelectDept = (keys: string[]) => {
-  if (keys.length === 0) return
-  selectedKeys.value = keys
-  loadDepartmentDetail(keys[0])
-}
-
-// 展开/收起节点
-const handleExpand = (keys: string[]) => {
-  expandedKeys.value = keys
-}
-
-// 加载部门详情
-const loadDepartmentDetail = async (deptId: string) => {
+// ==================== 数据加载 ====================
+// 加载部门树
+const fetchDepartmentTree = async () => {
+  treeLoading.value = true
   try {
-    // TODO: 调用 API
-    // const res = await getDepartmentDetail(deptId)
-    // selectedDept.value = res.data
-
-    // 模拟数据
-    selectedDept.value = {
-      id: deptId,
-      name: '技术部',
-      code: 'TECH',
-      type: '部门',
-      parentName: '总公司',
-      leader: '张三',
-      phone: '010-12345678',
-      email: 'tech@example.com',
-      sort: 1,
-      enabled: true,
-      description: '负责公司技术研发工作',
-      createdAt: '2024-01-01 10:00:00',
+    const response = await departmentApi.getDepartmentTree(currentOrgId.value)
+    if (response.code === 200) {
+      treeData.value = response.data
+      filteredTreeData.value = response.data
+      // 默认展开第一层
+      expandedKeys.value = response.data.map(node => node.id)
+    } else {
+      message.error(response.message || '获取部门树失败')
     }
-
-    // 加载部门成员
-    await loadMembers()
   } catch (error) {
-    message.error('加载部门详情失败')
+    console.error('获取部门树失败:', error)
+    message.error('获取部门树失败')
+  } finally {
+    treeLoading.value = false
+  }
+}
+
+// 刷新部门树
+const handleRefreshTree = async () => {
+  refreshLoading.value = true
+  try {
+    const response = await departmentApi.refreshDepartmentTree(currentOrgId.value)
+    if (response.code === 200) {
+      treeData.value = response.data
+      filteredTreeData.value = response.data
+      // 默认展开第一层
+      expandedKeys.value = response.data.map(node => node.id)
+      // 清空搜索关键词
+      treeSearchKeyword.value = ''
+      message.success('刷新成功')
+    } else {
+      message.error(response.message || '刷新失败')
+    }
+  } catch (error) {
+    console.error('刷新失败:', error)
+    message.error('刷新失败')
+  } finally {
+    refreshLoading.value = false
+  }
+}
+
+// 加载部门列表
+const fetchDepartmentList = async () => {
+  tableLoading.value = true
+  try {
+    const response = await departmentApi.getDepartmentList({
+      ...queryParams,
+      current: pagination.current,
+      size: pagination.size,
+    })
+
+    if (response.code === 200) {
+      departmentList.value = response.data.records
+      pagination.total = response.data.total
+    } else {
+      message.error(response.message || '获取部门列表失败')
+    }
+  } catch (error) {
+    console.error('获取部门列表失败:', error)
+    message.error('获取部门列表失败')
+  } finally {
+    tableLoading.value = false
+  }
+}
+
+// ==================== 树形操作 ====================
+// 树形搜索
+const handleTreeSearch = () => {
+  if (treeSearchKeyword.value) {
+    filteredTreeData.value = filterTree(treeData.value, treeSearchKeyword.value)
+    expandedKeys.value = expandMatchedNodes(treeData.value, treeSearchKeyword.value)
+  } else {
+    filteredTreeData.value = treeData.value
+    expandedKeys.value = treeData.value.map(node => node.id)
+  }
+}
+
+// 树节点选择
+const handleTreeSelect = (keys: string[]) => {
+  if (keys.length > 0) {
+    const nodeId = keys[0]
+    if (nodeId) {
+      const node = findNode(treeData.value, nodeId)
+      selectedDepartment.value = node
+      queryParams.parentId = nodeId
+      pagination.current = 1
+      fetchDepartmentList()
+    }
+  } else {
+    selectedDepartment.value = null
+    queryParams.parentId = undefined
+    fetchDepartmentList()
+  }
+}
+
+// 树节点操作
+const handleTreeAction = ({ domEvent }: { key: string; domEvent: MouseEvent }) => {
+  const target = (domEvent.target as HTMLElement).closest('.ant-dropdown-menu-item')
+  if (!target) return
+
+  const action = (target as HTMLElement).dataset.action
+  const nodeId = (target as HTMLElement).dataset.nodeId
+
+  if (!action || !nodeId) return
+
+  const node = findNode(treeData.value, nodeId)
+  if (!node) return
+
+  switch (action) {
+    case 'add':
+      handleAddChild(node)
+      break
+    case 'edit':
+      handleEdit(node)
+      break
+    case 'up':
+      handleMoveUp(node)
+      break
+    case 'down':
+      handleMoveDown(node)
+      break
+    case 'delete':
+      handleDelete(node)
+      break
   }
 }
 
 // 添加根部门
-const handleAddRootDept = () => {
-  Object.assign(deptForm, {
-    id: '',
-    orgId: selectedOrgId.value,
-    parentId: '',
+const handleAddRootDepartment = () => {
+  Object.assign(formData, {
+    id: undefined,
     name: '',
     code: '',
-    type: 'company',
-    leader: '',
-    phone: '',
-    email: '',
+    parentId: currentOrgId.value as string | undefined,
+    orgId: currentOrgId.value,
     sort: 0,
-    enabled: true,
     description: '',
+    status: 'enabled',
   })
-  deptDrawerVisible.value = true
+  formModalVisible.value = true
 }
 
 // 添加子部门
-const handleAddSubDept = () => {
-  Object.assign(deptForm, {
-    id: '',
-    orgId: selectedOrgId.value,
-    parentId: selectedDept.value?.id,
+const handleAddChild = (node: Department) => {
+  Object.assign(formData, {
+    id: undefined,
     name: '',
     code: '',
-    type: 'department',
-    leader: '',
-    phone: '',
-    email: '',
+    parentId: node.id,
+    orgId: currentOrgId.value,
     sort: 0,
-    enabled: true,
     description: '',
+    status: 'enabled',
   })
-  deptDrawerVisible.value = true
+  formModalVisible.value = true
 }
 
-// 编辑部门
-const handleEditDept = (dept: any) => {
-  Object.assign(deptForm, {
-    id: dept.id,
-    orgId: dept.orgId || selectedOrgId.value,
-    parentId: dept.parentId,
-    name: dept.name,
-    code: dept.code,
-    type: dept.type,
-    leader: dept.leaderId,
-    phone: dept.phone,
-    email: dept.email,
-    sort: dept.sort,
-    enabled: dept.enabled,
-    description: dept.description,
+// 上移
+const handleMoveUp = async (node: Department) => {
+  try {
+    // 找到父节点和兄弟节点
+    const parent = findParentNode(treeData.value, node.id)
+    if (!parent || !parent.children) return
+
+    const siblings = parent.children
+    const currentIndex = siblings.findIndex(child => child.id === node.id)
+    if (currentIndex <= 0) return
+
+    // 获取上一个兄弟节点
+    const prevSibling = siblings[currentIndex - 1]
+    if (!prevSibling) return
+
+    const response = await departmentApi.moveDepartment({
+      departToMove: node.id,
+      destParentDepart: node.parentId,
+      departBefore: prevSibling.id,
+    })
+    if (response.code === 200) {
+      message.success('上移成功')
+      fetchDepartmentTree()
+      fetchDepartmentList()
+    } else {
+      message.error(response.message || '上移失败')
+    }
+  } catch (error) {
+    console.error('上移失败:', error)
+    message.error('上移失败')
+  }
+}
+
+// 下移
+const handleMoveDown = async (node: Department) => {
+  try {
+    // 找到父节点和兄弟节点
+    const parent = findParentNode(treeData.value, node.id)
+    if (!parent || !parent.children) return
+
+    const siblings = parent.children
+    const currentIndex = siblings.findIndex(child => child.id === node.id)
+    if (currentIndex >= siblings.length - 1) return
+
+    // 获取下一个兄弟节点
+    const nextSibling = siblings[currentIndex + 1]
+    if (!nextSibling) return
+
+    const response = await departmentApi.moveDepartment({
+      departToMove: node.id,
+      destParentDepart: node.parentId,
+      departAfter: nextSibling.id,
+    })
+    if (response.code === 200) {
+      message.success('下移成功')
+      fetchDepartmentTree()
+      fetchDepartmentList()
+    } else {
+      message.error(response.message || '下移失败')
+    }
+  } catch (error) {
+    console.error('下移失败:', error)
+    message.error('下移失败')
+  }
+}
+
+// 拖拽排序
+const handleTreeDrop = async (info: {
+  node: { key: string; pos: string }
+  dragNode: { key: string }
+  dropPosition: number
+  dropToGap: boolean
+}) => {
+  const dropKey = info.node.key
+  const dragKey = info.dragNode.key
+  const dropPos = info.node.pos.split('-')
+  const dropPosition = info.dropPosition - Number(dropPos[dropPos.length - 1])
+
+  try {
+    const moveData: {
+      departToMove: string
+      destParentDepart?: string
+      departBefore?: string
+      departAfter?: string
+    } = {
+      departToMove: dragKey,
+    }
+
+    if (!info.dropToGap) {
+      // 放入目标节点内部（成为子节点）
+      moveData.destParentDepart = dropKey
+    } else {
+      // 放在目标节点的前面或后面（同级）
+      const targetNode = findNode(treeData.value, dropKey)
+      if (targetNode) {
+        moveData.destParentDepart = targetNode.parentId
+        if (dropPosition === -1) {
+          // 放在前面
+          moveData.departBefore = dropKey
+        } else {
+          // 放在后面
+          moveData.departAfter = dropKey
+        }
+      }
+    }
+
+    const response = await departmentApi.moveDepartment(moveData)
+    if (response.code === 200) {
+      message.success('移动成功')
+      fetchDepartmentTree()
+      fetchDepartmentList()
+    } else {
+      message.error(response.message || '移动失败')
+    }
+  } catch (error) {
+    console.error('移动失败:', error)
+    message.error('移动失败')
+  }
+}
+
+// ==================== 表格操作 ====================
+// 搜索
+const handleSearch = () => {
+  pagination.current = 1
+  fetchDepartmentList()
+}
+
+// 重置
+const handleReset = () => {
+  queryParams.keyword = ''
+  queryParams.status = undefined
+  queryParams.parentId = undefined
+  selectedKeys.value = []
+  selectedDepartment.value = null
+  pagination.current = 1
+  fetchDepartmentList()
+}
+
+// 分页变化
+const handlePageChange = (page: number, pageSize: number) => {
+  pagination.current = page
+  pagination.size = pageSize
+  fetchDepartmentList()
+}
+
+// 编辑
+const handleEdit = (record: Department) => {
+  Object.assign(formData, {
+    id: record.id,
+    name: record.name,
+    code: record.code,
+    parentId: record.parentId || currentOrgId.value,
+    orgId: record.orgId,
+    sort: record.sort,
+    description: record.description,
+    status: record.status,
   })
-  deptDrawerVisible.value = true
+  formModalVisible.value = true
 }
 
-// 关闭部门抽屉
-const handleCloseDeptDrawer = () => {
-  deptDrawerVisible.value = false
-  deptFormRef.value?.resetFields()
+// 删除
+const handleDelete = (record: Department) => {
+  Modal.confirm({
+    title: '删除部门',
+    content: `确定要删除部门 "${record.name}" 吗？删除后该部门下的所有子部门将一并删除，此操作不可恢复！`,
+    okText: '确定',
+    okType: 'danger',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        const response = await departmentApi.deleteDepartment(record.id)
+        if (response.code === 200) {
+          message.success('删除成功')
+          fetchDepartmentTree()
+          if (departmentList.value.length === 1 && pagination.current > 1) {
+            pagination.current--
+          }
+          fetchDepartmentList()
+        } else {
+          message.error(response.message || '删除失败')
+        }
+      } catch (error) {
+        console.error('删除失败:', error)
+        message.error('删除失败')
+      }
+    },
+  })
 }
 
-// 提交部门表单
-const handleSubmitDept = async () => {
+// ==================== 表单操作 ====================
+// 提交表单
+const handleSubmit = async () => {
   try {
-    await deptFormRef.value?.validate()
-    deptSubmitting.value = true
+    await formRef.value?.validate()
+    formLoading.value = true
 
-    // TODO: 调用 API
-    // if (deptForm.id) {
-    //   await updateDepartment(deptForm)
-    // } else {
-    //   await createDepartment(deptForm)
-    // }
+    const api = formData.id
+      ? departmentApi.updateDepartment
+      : departmentApi.createDepartment
 
-    message.success(deptForm.id ? '更新成功' : '创建成功')
-    handleCloseDeptDrawer()
-    await loadDepartmentTree()
+    const response = await api(formData)
+
+    if (response.code === 200) {
+      message.success(formData.id ? '更新成功' : '创建成功')
+      formModalVisible.value = false
+      fetchDepartmentTree()
+      fetchDepartmentList()
+    } else {
+      message.error(response.message || '操作失败')
+    }
   } catch (error) {
-    message.error('操作失败')
+    console.error('表单验证失败:', error)
   } finally {
-    deptSubmitting.value = false
+    formLoading.value = false
   }
 }
 
-// 删除部门
-const handleDeleteDept = async (deptId: string) => {
-  try {
-    // TODO: 调用 API
-    // await deleteDepartment(deptId)
+// 关闭表单
+const handleFormClose = () => {
+  formRef.value?.resetFields()
+}
 
-    message.success('删除成功')
-    selectedDept.value = null
-    selectedKeys.value = []
-    await loadDepartmentTree()
+// ==================== 导入导出 ====================
+// 下载模板
+const handleDownloadTemplate = async () => {
+  try {
+    const blob = await departmentApi.downloadTemplate()
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `部门导入模板_${dayjs().format('YYYYMMDDHHmmss')}.xlsx`
+    link.click()
+    window.URL.revokeObjectURL(url)
+    message.success('下载成功')
   } catch (error) {
-    message.error('删除失败')
+    console.error('下载模板失败:', error)
+    message.error('下载模板失败')
   }
 }
 
-// 加载部门成员
-const loadMembers = async () => {
-  if (!selectedDept.value) return
-
+// 导入
+const handleImport = async (file: File) => {
   try {
-    memberLoading.value = true
-    // TODO: 调用 API
-    // const res = await getDepartmentMembers({
-    //   deptId: selectedDept.value.id,
-    //   ...memberFilters,
-    //   page: memberPagination.current,
-    //   pageSize: memberPagination.pageSize,
-    // })
-    // members.value = res.data.list
-    // memberPagination.total = res.data.total
-
-    // 模拟数据
-    members.value = [
-      {
-        id: '1',
-        name: '张三',
-        employeeNo: 'E001',
-        avatar: '',
-        position: '技术总监',
-        isLeader: true,
-        phone: '13800138000',
-        email: 'zhangsan@example.com',
-        status: 'active',
-        joinedAt: '2024-01-01',
-      },
-      {
-        id: '2',
-        name: '李四',
-        employeeNo: 'E002',
-        avatar: '',
-        position: '前端工程师',
-        isLeader: false,
-        phone: '13800138001',
-        email: 'lisi@example.com',
-        status: 'active',
-        joinedAt: '2024-02-01',
-      },
-    ]
-    memberPagination.total = 2
+    const response = await departmentApi.importDepartments(file)
+    if (response.code === 200) {
+      message.success(`导入完成：成功 ${response.data.success} 条，失败 ${response.data.fail} 条`)
+      fetchDepartmentTree()
+      fetchDepartmentList()
+    } else {
+      message.error(response.message || '导入失败')
+    }
   } catch (error) {
-    message.error('加载成员列表失败')
-  } finally {
-    memberLoading.value = false
+    console.error('导入失败:', error)
+    message.error('导入失败')
   }
+  return false // 阻止默认上传行为
 }
 
-// 重置成员筛选
-const handleResetMemberFilters = () => {
-  memberFilters.keyword = ''
-  memberFilters.status = undefined
-  memberFilters.role = undefined
-  loadMembers()
-}
-
-// 成员表格变化
-const handleMemberTableChange: TableProps['onChange'] = (pagination) => {
-  memberPagination.current = pagination.current || 1
-  memberPagination.pageSize = pagination.pageSize || 10
-  loadMembers()
-}
-
-// 添加成员
-const handleAddMember = () => {
-  addMemberVisible.value = true
-  searchUsers()
-}
-
-// 搜索用户
-const searchUsers = async () => {
+// 导出
+const handleExport = async () => {
   try {
-    userSearchLoading.value = true
-    // TODO: 调用 API
-    // const res = await searchAvailableUsers({
-    //   keyword: userSearchKeyword.value,
-    //   page: userPagination.current,
-    //   pageSize: userPagination.pageSize,
-    // })
-    // availableUsers.value = res.data.list
-    // userPagination.total = res.data.total
-
-    // 模拟数据
-    availableUsers.value = [
-      {
-        id: '3',
-        name: '王五',
-        employeeNo: 'E003',
-        avatar: '',
-        position: '后端工程师',
-        departmentName: '产品部',
-      },
-      {
-        id: '4',
-        name: '赵六',
-        employeeNo: 'E004',
-        avatar: '',
-        position: '测试工程师',
-        departmentName: null,
-      },
-    ]
-    userPagination.total = 2
-  } catch (error) {
-    message.error('搜索用户失败')
-  } finally {
-    userSearchLoading.value = false
-  }
-}
-
-// 用户表格变化
-const handleUserTableChange: TableProps['onChange'] = (pagination) => {
-  userPagination.current = pagination.current || 1
-  userPagination.pageSize = pagination.pageSize || 5
-  searchUsers()
-}
-
-// 提交添加成员
-const handleSubmitAddMember = async () => {
-  if (selectedUserIds.value.length === 0) {
-    message.warning('请选择要添加的成员')
-    return
-  }
-
-  try {
-    // TODO: 调用 API
-    // await addDepartmentMembers({
-    //   deptId: selectedDept.value.id,
-    //   userIds: selectedUserIds.value,
-    // })
-
-    message.success('添加成功')
-    addMemberVisible.value = false
-    selectedUserIds.value = []
-    await loadMembers()
-  } catch (error) {
-    message.error('添加失败')
-  }
-}
-
-// 取消添加成员
-const handleCancelAddMember = () => {
-  addMemberVisible.value = false
-  selectedUserIds.value = []
-}
-
-// 设为/取消负责人
-const handleSetLeader = async (member: any) => {
-  try {
-    // TODO: 调用 API
-    // await setDepartmentLeader({
-    //   deptId: selectedDept.value.id,
-    //   userId: member.id,
-    //   isLeader: !member.isLeader,
-    // })
-
-    message.success(member.isLeader ? '已取消负责人' : '已设为负责人')
-    await loadMembers()
-  } catch (error) {
-    message.error('操作失败')
-  }
-}
-
-// 调动成员
-const handleTransferMember = (member: any) => {
-  currentTransferMember.value = member
-  targetDeptId.value = ''
-  transferReason.value = ''
-  transferVisible.value = true
-}
-
-// 提交调动
-const handleSubmitTransfer = async () => {
-  if (!targetDeptId.value) {
-    message.warning('请选择目标部门')
-    return
-  }
-
-  try {
-    // TODO: 调用 API
-    // await transferMember({
-    //   memberId: currentTransferMember.value.id,
-    //   fromDeptId: selectedDept.value.id,
-    //   toDeptId: targetDeptId.value,
-    //   reason: transferReason.value,
-    // })
-
-    message.success('调动成功')
-    transferVisible.value = false
-    await loadMembers()
-  } catch (error) {
-    message.error('调动失败')
-  }
-}
-
-// 移除成员
-const handleRemoveMember = async (memberId: string) => {
-  try {
-    // TODO: 调用 API
-    // await removeDepartmentMember({
-    //   deptId: selectedDept.value.id,
-    //   memberId: memberId,
-    // })
-
-    message.success('移除成功')
-    await loadMembers()
-  } catch (error) {
-    message.error('移除失败')
-  }
-}
-
-// 导入成员
-const handleImportMembers = () => {
-  importVisible.value = true
-  importFileList.value = []
-  importResult.value = null
-}
-
-// 导出成员
-const handleExportMembers = async () => {
-  try {
-    // TODO: 调用 API
-    // await exportDepartmentMembers({
-    //   deptId: selectedDept.value.id,
-    //   ...memberFilters,
-    // })
-
+    const blob = await departmentApi.exportDepartments(queryParams)
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `部门列表_${dayjs().format('YYYYMMDDHHmmss')}.xlsx`
+    link.click()
+    window.URL.revokeObjectURL(url)
     message.success('导出成功')
   } catch (error) {
+    console.error('导出失败:', error)
     message.error('导出失败')
   }
 }
 
-// 下载导入模板
-const handleDownloadTemplate = () => {
-  // TODO: 下载模板文件
-  message.info('正在下载模板...')
-}
-
-// 上传前检查
-const beforeUpload = (file: any) => {
-  const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-    file.type === 'application/vnd.ms-excel'
-  if (!isExcel) {
-    message.error('只能上传 Excel 文件！')
-  }
-  const isLt10M = file.size / 1024 / 1024 < 10
-  if (!isLt10M) {
-    message.error('文件大小不能超过 10MB！')
-  }
-  return isExcel && isLt10M
-}
-
-// 移除文件
-const handleRemoveFile = () => {
-  importFileList.value = []
-}
-
-// 提交导入
-const handleSubmitImport = async () => {
-  if (importFileList.value.length === 0) {
-    message.warning('请先上传文件')
-    return
-  }
-
-  try {
-    // TODO: 调用 API
-    // const formData = new FormData()
-    // formData.append('file', importFileList.value[0])
-    // formData.append('deptId', selectedDept.value.id)
-    // const res = await importDepartmentMembers(formData)
-
-    // 模拟结果
-    importResult.value = {
-      type: 'success',
-      message: '导入成功！共导入 10 条数据，成功 8 条，失败 2 条。',
-    }
-
-    await loadMembers()
-  } catch (error) {
-    importResult.value = {
-      type: 'error',
-      message: '导入失败，请检查文件格式',
-    }
-  }
-}
-
-// 设置权限
-const handleSetPermissions = () => {
-  permissionVisible.value = true
-  loadPermissionData()
-}
-
-// 加载权限数据
-const loadPermissionData = async () => {
-  try {
-    // TODO: 调用 API 加载菜单树和 API 列表
-    menuTree.value = [
-      {
-        id: '1',
-        title: '活动管理',
-        children: [
-          { id: '1-1', title: '活动列表' },
-          { id: '1-2', title: '活动类型' },
-        ],
-      },
-      {
-        id: '2',
-        title: '评审管理',
-        children: [
-          { id: '2-1', title: '评审规则' },
-          { id: '2-2', title: '评审任务' },
-        ],
-      },
-    ]
-
-    apiList.value = [
-      { id: 'api-1', name: '活动查询' },
-      { id: 'api-2', name: '活动创建' },
-      { id: 'api-3', name: '活动更新' },
-      { id: 'api-4', name: '活动删除' },
-    ]
-
-    // TODO: 加载当前部门的权限配置
-    permissionForm.dataScope = 'dept'
-    permissionForm.customDepts = []
-    permissionForm.menus = ['1-1', '2-1']
-    permissionForm.apis = ['api-1', 'api-2']
-  } catch (error) {
-    message.error('加载权限数据失败')
-  }
-}
-
-// 提交权限设置
-const handleSubmitPermissions = async () => {
-  try {
-    // TODO: 调用 API
-    // await updateDepartmentPermissions({
-    //   deptId: selectedDept.value.id,
-    //   ...permissionForm,
-    // })
-
-    message.success('权限设置成功')
-    permissionVisible.value = false
-  } catch (error) {
-    message.error('权限设置失败')
-  }
-}
-
-// 加载所有用户（用于选择负责人）
-const loadAllUsers = async () => {
-  try {
-    // TODO: 调用 API
-    // const res = await getAllUsers()
-    // allUsers.value = res.data
-
-    allUsers.value = [
-      { id: '1', name: '张三', employeeNo: 'E001' },
-      { id: '2', name: '李四', employeeNo: 'E002' },
-    ]
-  } catch (error) {
-    message.error('加载用户列表失败')
-  }
-}
-
-// 过滤用户选项
-const filterUserOption = (input: string, option: any) => {
-  return option.children[0].children.toLowerCase().includes(input.toLowerCase())
-}
-
+// ==================== 初始化 ====================
 onMounted(() => {
-  loadOrganizations()
-  loadAllUsers()
+  fetchDepartmentTree()
+  fetchDepartmentList()
 })
 </script>
 
 <style scoped>
-.department-management {
-  height: calc(100vh - 120px);
+.department-page {
+  padding: 16px;
 }
 
-.department-management :deep(.ant-card-body) {
-  height: calc(100% - 57px);
+.department-tree-wrapper {
+  max-height: calc(100vh - 300px);
   overflow-y: auto;
 }
 
-.department-management :deep(.ant-tree) {
-  background: transparent;
+.tree-node-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-right: 4px;
+}
+
+.tree-node-title:hover .node-action-btn {
+  opacity: 1;
+}
+
+.node-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-action-btn {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.node-action-btn:hover,
+.node-action-btn:focus {
+  opacity: 1 !important;
+}
+
+.department-list-section {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .department-page {
+    padding: 8px;
+  }
+
+  .department-tree-wrapper {
+    max-height: 400px;
+  }
 }
 </style>

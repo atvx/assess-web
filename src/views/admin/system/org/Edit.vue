@@ -58,7 +58,12 @@
         <a-input v-model:value="formData.leaderPhone" placeholder="请输入负责人电话" />
       </a-form-item>
       <a-form-item label="联系邮箱" name="email">
-        <a-input v-model:value="formData.email" placeholder="请输入联系邮箱" />
+        <a-auto-complete
+          v-model:value="formData.email"
+          :options="emailOptions"
+          placeholder="请输入联系邮箱"
+          @search="handleEmailSearch"
+        />
       </a-form-item>
       <a-form-item label="联系电话" name="phone">
         <a-input v-model:value="formData.phone" placeholder="请输入联系电话" />
@@ -108,6 +113,25 @@ const emit = defineEmits<Emits>()
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
+
+// 邮箱自动补全选项
+const emailOptions = ref<{ value: string; label: string }[]>([])
+
+// 常见邮箱域名
+const emailDomains = ['gmail.com', '163.com', 'qq.com', 'sina.com', 'outlook.com', '126.com', 'foxmail.com']
+
+// 处理邮箱输入搜索
+const handleEmailSearch = (value: string) => {
+  if (!value || value.includes('@')) {
+    emailOptions.value = []
+    return
+  }
+
+  emailOptions.value = emailDomains.map((domain) => ({
+    label: `${value}@${domain}`,
+    value: `${value}@${domain}`,
+  }))
+}
 
 const formData = reactive<OrganizationFormDTO>({
   name: '',
