@@ -6,30 +6,21 @@
       <!-- 左侧：部门树 -->
       <a-col :xs="24" :sm="24" :md="8" :lg="7" :xl="6">
         <a-card class="h-full rounded-lg shadow" :bordered="false">
-          <template #title>
-            <div class="flex items-center justify-between">
-              <span class="text-lg font-semibold text-gray-900 dark:text-white">部门结构</span>
-              <a-button
-                type="primary"
-                size="small"
-                @click="handleAddRootDepartment"
-              >
-                <template #icon>
-                  <PlusOutlined />
-                </template>
-                添加部门
-              </a-button>
-            </div>
-          </template>
-
-          <!-- 搜索框 -->
-          <a-input-search
-            v-model:value="treeSearchKeyword"
-            placeholder="搜索部门"
-            allow-clear
-            class="mb-4"
-            @search="handleTreeSearch"
-          />
+          <div class="flex items-center gap-2 mb-4">
+            <!-- 搜索框 -->
+            <a-input-search
+              v-model:value="treeSearchKeyword"
+              placeholder="搜索部门"
+              allow-clear
+              style="flex: 1"
+              @search="handleTreeSearch"
+            />
+            <a-button @click="handleRefreshTree" :loading="refreshLoading">
+              <template #icon>
+                <SyncOutlined />
+              </template>
+            </a-button>
+          </div>
 
           <!-- 部门树 -->
           <div class="department-tree-wrapper">
@@ -166,12 +157,6 @@
                     </template>
                     重置
                   </a-button>
-                  <a-button @click="handleRefreshTree" :loading="refreshLoading">
-                    <template #icon>
-                      <SyncOutlined />
-                    </template>
-                    刷新树
-                  </a-button>
                 </a-space>
               </a-form-item>
             </a-form>
@@ -182,10 +167,7 @@
             <template #title>
               <div class="flex items-center justify-between">
                 <span class="text-lg font-semibold text-gray-900 dark:text-white">
-                  部门列表
-                  <span v-if="selectedDepartment" class="text-sm font-normal text-gray-500 ml-2">
-                    （当前选中：{{ selectedDepartment.name }}）
-                  </span>
+                  {{ selectedDepartment?.name || '全部部门' }}
                 </span>
                 <a-space>
                   <a-button @click="handleDownloadTemplate">
@@ -242,11 +224,6 @@
                   <span class="text-sm">
                     {{ record.parentName || '-' }}
                   </span>
-                </template>
-
-                <!-- 排序 -->
-                <template v-else-if="column.key === 'sort'">
-                  <span class="text-sm">{{ record.sort }}</span>
                 </template>
 
                 <!-- 状态 -->
@@ -332,14 +309,6 @@
             tree-default-expand-all
           />
         </a-form-item>
-        <a-form-item label="排序" name="sort">
-          <a-input-number
-            v-model:value="formData.sort"
-            :min="0"
-            placeholder="请输入排序号"
-            class="w-full"
-          />
-        </a-form-item>
         <a-form-item label="状态" name="status">
           <a-radio-group v-model:value="formData.status">
             <a-radio value="enabled">启用</a-radio>
@@ -396,6 +365,7 @@ const selectedKeys = ref<string[]>([])
 const treeSearchKeyword = ref('')
 const treeLoading = ref(false)
 const refreshLoading = ref(false)
+const isMoving = ref(false) // 防止并发移动操作
 const selectedDepartment = ref<Department | null>(null)
 
 // ==================== 表格列表相关 ====================
@@ -408,11 +378,15 @@ const queryParams = reactive<{
   status: 'enabled' | 'disabled' | undefined
   orgId: string
   parentId: string | undefined
+  sortBy: string
+  sortOrder: string
 }>({
   keyword: '',
   status: undefined,
   orgId: currentOrgId.value,
   parentId: undefined,
+  sortBy: 'sort',
+  sortOrder: 'desc',
 })
 
 // 分页信息
@@ -434,11 +408,6 @@ const columns = [
     title: '上级部门',
     key: 'parent',
     width: 150,
-  },
-  {
-    title: '排序',
-    key: 'sort',
-    width: 100,
   },
   {
     title: '状态',
@@ -468,7 +437,6 @@ const formData = reactive<DepartmentFormDTO>({
   code: '',
   parentId: undefined,
   orgId: currentOrgId.value,
-  sort: 0,
   description: '',
   status: 'enabled',
 })
@@ -603,46 +571,117 @@ const expandMatchedNodes = (nodes: Department[], keyword: string, keys: string[]
 }
 
 // ==================== 数据加载 ====================
-// 加载部门树
+// 加载部门树（使用无缓存的刷新接口）
 const fetchDepartmentTree = async () => {
   treeLoading.value = true
   try {
-    const response = await departmentApi.getDepartmentTree(currentOrgId.value)
-    if (response.code === 200) {
-      treeData.value = response.data
-      filteredTreeData.value = response.data
-      // 默认展开第一层
-      expandedKeys.value = response.data.map(node => node.id)
-    } else {
-      message.error(response.message || '获取部门树失败')
-    }
-  } catch (error) {
-    console.error('获取部门树失败:', error)
-    message.error('获取部门树失败')
-  } finally {
-    treeLoading.value = false
-  }
-}
-
-// 刷新部门树
-const handleRefreshTree = async () => {
-  refreshLoading.value = true
-  try {
+    console.log('🔄 [fetchDepartmentTree] 初始加载部门树（无缓存）')
     const response = await departmentApi.refreshDepartmentTree(currentOrgId.value)
     if (response.code === 200) {
       treeData.value = response.data
       filteredTreeData.value = response.data
       // 默认展开第一层
       expandedKeys.value = response.data.map(node => node.id)
-      // 清空搜索关键词
-      treeSearchKeyword.value = ''
-      message.success('刷新成功')
+      console.log('✅ [fetchDepartmentTree] 部门树加载成功')
     } else {
-      message.error(response.message || '刷新失败')
+      console.error('❌ [fetchDepartmentTree] 获取部门树失败', response.message)
+      message.error(response.message || '获取部门树失败')
     }
   } catch (error) {
-    console.error('刷新失败:', error)
+    console.error('❌ [fetchDepartmentTree] 获取部门树异常:', error)
+    message.error('获取部门树失败')
+  } finally {
+    treeLoading.value = false
+  }
+}
+
+// 刷新部门树（强制刷新，无缓存）
+const refreshTree = async (keepExpandedKeys = false) => {
+  try {
+    console.log('🔄 [refreshTree] 开始刷新部门树', {
+      keepExpandedKeys,
+      currentOrgId: currentOrgId.value,
+      timestamp: new Date().toISOString()
+    })
+    
+    const oldExpandedKeys = keepExpandedKeys ? [...expandedKeys.value] : []
+    const oldSelectedKeys = [...selectedKeys.value]
+    const oldTreeDataLength = treeData.value.length
+    
+    console.log('📊 [refreshTree] 刷新前状态', {
+      oldExpandedKeys,
+      oldSelectedKeys,
+      oldTreeDataLength
+    })
+    
+    // 直接调用 refreshDepartmentTree API（后端强制刷新，无缓存）
+    const response = await departmentApi.refreshDepartmentTree(currentOrgId.value)
+    
+    console.log('📥 [refreshTree] API响应', {
+      code: response.code,
+      dataLength: response.data?.length
+    })
+    
+    // 单独打印完整的树结构
+    console.log('📦 [refreshTree] API返回的完整树结构：')
+    console.log(response.data)
+    
+    if (response.code === 200) {
+      treeData.value = response.data
+      filteredTreeData.value = response.data
+      
+      console.log('✅ [refreshTree] 树数据已更新', {
+        newTreeDataLength: treeData.value.length
+      })
+      
+      // 递归函数：打印树的层级结构
+      const printTreeStructure = (nodes: Department[], level = 0) => {
+        nodes.forEach(node => {
+          const indent = '  '.repeat(level)
+          console.log(`${indent}├─ ${node.name} (sort: ${node.sort || 0}, id: ${node.id})`)
+          if (node.children && node.children.length > 0) {
+            printTreeStructure(node.children, level + 1)
+          }
+        })
+      }
+      
+      console.log('🌳 [refreshTree] 树结构层级：')
+      printTreeStructure(treeData.value)
+      
+      // 如果需要保持展开状态，则使用旧的 expandedKeys，否则默认展开第一层
+      if (keepExpandedKeys && oldExpandedKeys.length > 0) {
+        expandedKeys.value = oldExpandedKeys
+      } else {
+        expandedKeys.value = response.data.map(node => node.id)
+      }
+      
+      // 保持选中状态
+      if (keepExpandedKeys && oldSelectedKeys.length > 0) {
+        selectedKeys.value = oldSelectedKeys
+      }
+      
+      console.log('✅ [refreshTree] 刷新成功')
+      return true
+    } else {
+      console.error('❌ [refreshTree] 刷新失败', response.message)
+      message.error(response.message || '刷新失败')
+      return false
+    }
+  } catch (error) {
+    console.error('❌ [refreshTree] 刷新异常:', error)
     message.error('刷新失败')
+    return false
+  }
+}
+
+// 刷新部门树按钮
+const handleRefreshTree = async () => {
+  refreshLoading.value = true
+  try {
+    await refreshTree(false)
+    // 清空搜索关键词
+    treeSearchKeyword.value = ''
+    message.success('刷新成功')
   } finally {
     refreshLoading.value = false
   }
@@ -742,7 +781,6 @@ const handleAddRootDepartment = () => {
     code: '',
     parentId: currentOrgId.value as string | undefined,
     orgId: currentOrgId.value,
-    sort: 0,
     description: '',
     status: 'enabled',
   })
@@ -757,7 +795,6 @@ const handleAddChild = (node: Department) => {
     code: '',
     parentId: node.id,
     orgId: currentOrgId.value,
-    sort: 0,
     description: '',
     status: 'enabled',
   })
@@ -766,67 +803,207 @@ const handleAddChild = (node: Department) => {
 
 // 上移
 const handleMoveUp = async (node: Department) => {
+  console.log('⬆️ [handleMoveUp] 开始上移操作', {
+    nodeName: node.name,
+    nodeId: node.id,
+    parentId: node.parentId,
+    isMoving: isMoving.value
+  })
+  
+  if (isMoving.value) {
+    console.warn('⚠️ [handleMoveUp] 操作被拒绝：正在移动中')
+    message.warning('正在移动中，请稍候...')
+    return
+  }
+  
+  isMoving.value = true
   try {
     // 找到父节点和兄弟节点
     const parent = findParentNode(treeData.value, node.id)
-    if (!parent || !parent.children) return
+    console.log('📍 [handleMoveUp] 找到父节点', {
+      hasParent: !!parent,
+      hasChildren: !!parent?.children,
+      childrenCount: parent?.children?.length
+    })
+    
+    if (!parent || !parent.children) {
+      console.warn('⚠️ [handleMoveUp] 没有父节点或子节点')
+      return
+    }
 
     const siblings = parent.children
     const currentIndex = siblings.findIndex(child => child.id === node.id)
-    if (currentIndex <= 0) return
+    
+    console.log('📊 [handleMoveUp] 兄弟节点信息', {
+      currentIndex,
+      totalSiblings: siblings.length,
+      siblingNames: siblings.map(s => s.name)
+    })
+    
+    if (currentIndex <= 0) {
+      console.warn('⚠️ [handleMoveUp] 已经是第一个，无法上移')
+      return
+    }
 
     // 获取上一个兄弟节点
     const prevSibling = siblings[currentIndex - 1]
-    if (!prevSibling) return
+    if (!prevSibling) {
+      console.warn('⚠️ [handleMoveUp] 没有找到上一个兄弟节点')
+      return
+    }
 
-    const response = await departmentApi.moveDepartment({
+    const moveParams = {
       departToMove: node.id,
       destParentDepart: node.parentId,
       departBefore: prevSibling.id,
+    }
+    
+    console.log('📤 [handleMoveUp] 发送移动请求', moveParams)
+    
+    const response = await departmentApi.moveDepartment(moveParams)
+    
+    console.log('📥 [handleMoveUp] 移动API响应', {
+      code: response.code,
+      message: response.message,
+      data: response.data
     })
+    
     if (response.code === 200) {
       message.success('上移成功')
-      fetchDepartmentTree()
-      fetchDepartmentList()
+      console.log('✅ [handleMoveUp] 移动成功，开始刷新树')
+      
+      // 打印移动前的树结构
+      const printTree = (nodes: Department[], level = 0) => {
+        nodes.forEach(n => {
+          console.log(`${'  '.repeat(level)}├─ ${n.name} (sort: ${n.sort || 0})`)
+          if (n.children?.length) printTree(n.children, level + 1)
+        })
+      }
+      console.log('🌳 [handleMoveUp] 刷新前树结构：')
+      printTree(treeData.value)
+      
+      const success = await refreshTree(true)
+      console.log('🔄 [handleMoveUp] 刷新树结果', { success })
+      
+      console.log('🌳 [handleMoveUp] 刷新后树结构：')
+      printTree(treeData.value)
+      
+      if (success) {
+        fetchDepartmentList()
+      }
     } else {
+      console.error('❌ [handleMoveUp] 移动失败', response.message)
       message.error(response.message || '上移失败')
     }
   } catch (error) {
-    console.error('上移失败:', error)
+    console.error('❌ [handleMoveUp] 上移异常:', error)
     message.error('上移失败')
+  } finally {
+    isMoving.value = false
+    console.log('🏁 [handleMoveUp] 上移操作结束')
   }
 }
 
 // 下移
 const handleMoveDown = async (node: Department) => {
+  console.log('⬇️ [handleMoveDown] 开始下移操作', {
+    nodeName: node.name,
+    nodeId: node.id,
+    parentId: node.parentId,
+    isMoving: isMoving.value
+  })
+  
+  if (isMoving.value) {
+    console.warn('⚠️ [handleMoveDown] 操作被拒绝：正在移动中')
+    message.warning('正在移动中，请稍候...')
+    return
+  }
+  
+  isMoving.value = true
   try {
     // 找到父节点和兄弟节点
     const parent = findParentNode(treeData.value, node.id)
-    if (!parent || !parent.children) return
+    console.log('📍 [handleMoveDown] 找到父节点', {
+      hasParent: !!parent,
+      hasChildren: !!parent?.children,
+      childrenCount: parent?.children?.length
+    })
+    
+    if (!parent || !parent.children) {
+      console.warn('⚠️ [handleMoveDown] 没有父节点或子节点')
+      return
+    }
 
     const siblings = parent.children
     const currentIndex = siblings.findIndex(child => child.id === node.id)
-    if (currentIndex >= siblings.length - 1) return
+    
+    console.log('📊 [handleMoveDown] 兄弟节点信息', {
+      currentIndex,
+      totalSiblings: siblings.length,
+      siblingNames: siblings.map(s => s.name)
+    })
+    
+    if (currentIndex >= siblings.length - 1) {
+      console.warn('⚠️ [handleMoveDown] 已经是最后一个，无法下移')
+      return
+    }
 
     // 获取下一个兄弟节点
     const nextSibling = siblings[currentIndex + 1]
-    if (!nextSibling) return
+    if (!nextSibling) {
+      console.warn('⚠️ [handleMoveDown] 没有找到下一个兄弟节点')
+      return
+    }
 
-    const response = await departmentApi.moveDepartment({
+    const moveParams = {
       departToMove: node.id,
       destParentDepart: node.parentId,
       departAfter: nextSibling.id,
+    }
+    
+    console.log('📤 [handleMoveDown] 发送移动请求', moveParams)
+    
+    const response = await departmentApi.moveDepartment(moveParams)
+    
+    console.log('📥 [handleMoveDown] 移动API响应', {
+      code: response.code,
+      message: response.message,
+      data: response.data
     })
+    
     if (response.code === 200) {
       message.success('下移成功')
-      fetchDepartmentTree()
-      fetchDepartmentList()
+      console.log('✅ [handleMoveDown] 移动成功，开始刷新树')
+      
+      // 打印移动前的树结构
+      const printTree = (nodes: Department[], level = 0) => {
+        nodes.forEach(n => {
+          console.log(`${'  '.repeat(level)}├─ ${n.name} (sort: ${n.sort || 0})`)
+          if (n.children?.length) printTree(n.children, level + 1)
+        })
+      }
+      console.log('🌳 [handleMoveDown] 刷新前树结构：')
+      printTree(treeData.value)
+      
+      const success = await refreshTree(true)
+      console.log('🔄 [handleMoveDown] 刷新树结果', { success })
+      
+      console.log('🌳 [handleMoveDown] 刷新后树结构：')
+      printTree(treeData.value)
+      
+      if (success) {
+        fetchDepartmentList()
+      }
     } else {
+      console.error('❌ [handleMoveDown] 移动失败', response.message)
       message.error(response.message || '下移失败')
     }
   } catch (error) {
-    console.error('下移失败:', error)
+    console.error('❌ [handleMoveDown] 下移异常:', error)
     message.error('下移失败')
+  } finally {
+    isMoving.value = false
+    console.log('🏁 [handleMoveDown] 下移操作结束')
   }
 }
 
@@ -837,12 +1014,58 @@ const handleTreeDrop = async (info: {
   dropPosition: number
   dropToGap: boolean
 }) => {
+  console.log('🎯 [handleTreeDrop] 开始拖拽操作', {
+    dragKey: info.dragNode.key,
+    dropKey: info.node.key,
+    dropPosition: info.dropPosition,
+    dropToGap: info.dropToGap,
+    isMoving: isMoving.value
+  })
+  
+  // 打印拖拽前的树结构
+  const printSimpleTree = (nodes: Department[], level = 0) => {
+    nodes.forEach(node => {
+      const indent = '  '.repeat(level)
+      console.log(`${indent}├─ ${node.name} (sort: ${node.sort || 0})`)
+      if (node.children && node.children.length > 0) {
+        printSimpleTree(node.children, level + 1)
+      }
+    })
+  }
+  
+  console.log('🌳 [handleTreeDrop] 拖拽前的树结构：')
+  printSimpleTree(treeData.value)
+  
+  if (isMoving.value) {
+    console.warn('⚠️ [handleTreeDrop] 操作被拒绝：正在移动中')
+    message.warning('正在移动中，请稍候...')
+    // 刷新一次树以恢复UI
+    await refreshTree(true)
+    return
+  }
+  
+  isMoving.value = true
   const dropKey = info.node.key
   const dragKey = info.dragNode.key
   const dropPos = info.node.pos.split('-')
   const dropPosition = info.dropPosition - Number(dropPos[dropPos.length - 1])
 
+  console.log('📊 [handleTreeDrop] 计算后的位置', {
+    dropPosition,
+    dropPos,
+    dropToGap: info.dropToGap
+  })
+
   try {
+    const dragNode = findNode(treeData.value, dragKey)
+    const targetNode = findNode(treeData.value, dropKey)
+    
+    console.log('🔍 [handleTreeDrop] 查找拖拽和目标节点', {
+      dragNode: dragNode?.name,
+      targetNode: targetNode?.name,
+      targetParentId: targetNode?.parentId
+    })
+    
     const moveData: {
       departToMove: string
       destParentDepart?: string
@@ -853,34 +1076,94 @@ const handleTreeDrop = async (info: {
     }
 
     if (!info.dropToGap) {
-      // 放入目标节点内部（成为子节点）
+      // 放入目标节点内部（成为子节点，插入到第一个位置）
       moveData.destParentDepart = dropKey
+      
+      // 根据Ant Design官方示例，dropToGap=false时应该插入到children的第一个位置
+      // 所以我们需要找到目标节点的第一个子节点，插入到它前面
+      if (targetNode && targetNode.children && targetNode.children.length > 0) {
+        const firstChild = targetNode.children[0]
+        if (firstChild && firstChild.id !== dragKey) {
+          moveData.departBefore = firstChild.id
+          console.log('📦 [handleTreeDrop] 放入目标节点内部（插入到第一个位置）', {
+            destParentDepart: dropKey,
+            departBefore: firstChild.id,
+            firstChildName: firstChild.name
+          })
+        } else {
+          console.log('📦 [handleTreeDrop] 放入目标节点内部（已是第一个子节点）', {
+            destParentDepart: dropKey
+          })
+        }
+      } else {
+        console.log('📦 [handleTreeDrop] 放入目标节点内部（成为第一个子节点）', {
+          destParentDepart: dropKey
+        })
+      }
     } else {
       // 放在目标节点的前面或后面（同级）
-      const targetNode = findNode(treeData.value, dropKey)
       if (targetNode) {
         moveData.destParentDepart = targetNode.parentId
         if (dropPosition === -1) {
           // 放在前面
           moveData.departBefore = dropKey
+          console.log('⬅️ [handleTreeDrop] 放在目标节点前面', {
+            destParentDepart: targetNode.parentId,
+            departBefore: dropKey,
+            targetNodeName: targetNode.name
+          })
         } else {
           // 放在后面
           moveData.departAfter = dropKey
+          console.log('➡️ [handleTreeDrop] 放在目标节点后面', {
+            destParentDepart: targetNode.parentId,
+            departAfter: dropKey,
+            targetNodeName: targetNode.name
+          })
         }
       }
     }
 
+    console.log('📤 [handleTreeDrop] 发送拖拽移动请求', moveData)
+    
     const response = await departmentApi.moveDepartment(moveData)
+    
+    console.log('📥 [handleTreeDrop] 拖拽API响应', {
+      code: response.code,
+      message: response.message,
+      data: response.data
+    })
+    
     if (response.code === 200) {
       message.success('移动成功')
-      fetchDepartmentTree()
-      fetchDepartmentList()
+      console.log('✅ [handleTreeDrop] 移动成功，开始刷新树')
+      
+      console.log('🌳 [handleTreeDrop] 刷新前树结构：')
+      printSimpleTree(treeData.value)
+      
+      const success = await refreshTree(true)
+      console.log('🔄 [handleTreeDrop] 刷新树结果', { success })
+      
+      console.log('🌳 [handleTreeDrop] 刷新后树结构：')
+      printSimpleTree(treeData.value)
+      
+      if (success) {
+        fetchDepartmentList()
+      }
     } else {
+      console.error('❌ [handleTreeDrop] 移动失败', response.message)
       message.error(response.message || '移动失败')
+      // 移动失败时刷新以恢复UI
+      await refreshTree(true)
     }
   } catch (error) {
-    console.error('移动失败:', error)
+    console.error('❌ [handleTreeDrop] 拖拽异常:', error)
     message.error('移动失败')
+    // 出错时刷新以恢复UI
+    await refreshTree(true)
+  } finally {
+    isMoving.value = false
+    console.log('🏁 [handleTreeDrop] 拖拽操作结束')
   }
 }
 
@@ -917,7 +1200,6 @@ const handleEdit = (record: Department) => {
     code: record.code,
     parentId: record.parentId || currentOrgId.value,
     orgId: record.orgId,
-    sort: record.sort,
     description: record.description,
     status: record.status,
   })
@@ -937,7 +1219,7 @@ const handleDelete = (record: Department) => {
         const response = await departmentApi.deleteDepartment(record.id)
         if (response.code === 200) {
           message.success('删除成功')
-          fetchDepartmentTree()
+          await refreshTree(true)
           if (departmentList.value.length === 1 && pagination.current > 1) {
             pagination.current--
           }
@@ -969,7 +1251,7 @@ const handleSubmit = async () => {
     if (response.code === 200) {
       message.success(formData.id ? '更新成功' : '创建成功')
       formModalVisible.value = false
-      fetchDepartmentTree()
+      await refreshTree(true)
       fetchDepartmentList()
     } else {
       message.error(response.message || '操作失败')
@@ -1010,7 +1292,7 @@ const handleImport = async (file: File) => {
     const response = await departmentApi.importDepartments(file)
     if (response.code === 200) {
       message.success(`导入完成：成功 ${response.data.success} 条，失败 ${response.data.fail} 条`)
-      fetchDepartmentTree()
+      await refreshTree(true)
       fetchDepartmentList()
     } else {
       message.error(response.message || '导入失败')
@@ -1054,6 +1336,13 @@ onMounted(() => {
 .department-tree-wrapper {
   max-height: calc(100vh - 300px);
   overflow-y: auto;
+  /* 隐藏滚动条但保持滚动功能 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+}
+
+.department-tree-wrapper::-webkit-scrollbar {
+  display: none; /* Chrome Safari */
 }
 
 .tree-node-title {
@@ -1062,6 +1351,7 @@ onMounted(() => {
   justify-content: space-between;
   width: 100%;
   padding-right: 4px;
+  line-height: 1.5;
 }
 
 .tree-node-title:hover .node-action-btn {
@@ -1073,11 +1363,15 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.5;
 }
 
 .node-action-btn {
   opacity: 0;
   transition: opacity 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .node-action-btn:hover,
