@@ -237,7 +237,7 @@ export const adminRoutes: RouteRecordRaw[] = [
       {
         path: 'system/department',
         name: 'SystemDepartment',
-        component: () => import('@/views/admin/system/Department.vue'),
+        component: () => import('@/views/admin/system/dept/index.vue'),
         meta: {
           title: '部门管理',
           requiresAuth: true,
