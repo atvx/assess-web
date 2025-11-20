@@ -273,7 +273,7 @@ export const adminRoutes: RouteRecordRaw[] = [
       {
         path: 'system/role',
         name: 'SystemRole',
-        component: () => import('@/views/admin/system/Role.vue'),
+        component: () => import('@/views/admin/system/role/List.vue'),
         meta: {
           title: '角色管理',
           requiresAuth: true,
