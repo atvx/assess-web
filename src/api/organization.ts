@@ -1,5 +1,6 @@
 import { request } from '@/utils/request'
-import type { ApiResponse, PageResult } from './user'
+import type { ApiResponse, PageResult, User, UserQueryDTO } from './user'
+import type { Department } from './department'
 
 /**
  * 组织信息
@@ -114,14 +115,14 @@ export const organizationApi = {
   /**
    * 获取组织下的部门列表
    */
-  getOrganizationDepartments(id: string): Promise<ApiResponse<any[]>> {
+  getOrganizationDepartments(id: string): Promise<ApiResponse<Department[]>> {
     return request.get(`/orgs/${id}/departments`)
   },
 
   /**
    * 获取组织下的用户列表
    */
-  getOrganizationUsers(id: string, params?: any): Promise<ApiResponse<PageResult<any>>> {
+  getOrganizationUsers(id: string, params?: UserQueryDTO): Promise<ApiResponse<PageResult<User>>> {
     return request.get(`/orgs/${id}/users`, { params })
   },
 

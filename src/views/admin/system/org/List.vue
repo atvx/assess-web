@@ -222,6 +222,7 @@ import {
 import {
   organizationApi,
   type Organization,
+  type OrganizationQueryDTO,
 } from '@/api/organization'
 import { getDictItemByCategoryCode, type DictItem } from '@/api/dict'
 import DictSelect from '@/components/common/DictSelect.vue'
@@ -230,10 +231,10 @@ import OrgEdit from './Edit.vue'
 import dayjs from 'dayjs'
 
 // 查询参数
-const queryParams = reactive({
+const queryParams = reactive<OrganizationQueryDTO>({
   keyword: '',
-  type: undefined as string | undefined,
-  status: undefined as string | undefined,
+  type: undefined,
+  status: undefined,
 })
 
 // 分页信息
@@ -381,8 +382,8 @@ const fetchOrganizationList = async () => {
   try {
     const response = await organizationApi.getOrganizationList({
       keyword: queryParams.keyword,
-      type: queryParams.type as any,
-      status: queryParams.status as any,
+      type: queryParams.type,
+      status: queryParams.status,
       current: pagination.current,
       size: pagination.size,
     })
