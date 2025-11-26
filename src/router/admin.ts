@@ -302,7 +302,7 @@ export const adminRoutes: RouteRecordRaw[] = [
       {
         path: 'settings/basic',
         name: 'SettingsBasic',
-        component: () => import('@/views/admin/settings/Basic.vue'),
+        component: () => import('@/views/admin/settings/basic/index.vue'),
         meta: {
           title: '基础配置',
           requiresAuth: true,
